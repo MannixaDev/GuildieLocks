@@ -5,6 +5,8 @@ A planning board for World of Warcraft: Forever groups. Start a group, share its
 - votes **Horde or Alliance**
 - lists up to three **class/spec choices** in order of preference
 
+Whoever creates a group is its **leader**. The leader can rename it, change its size, remove players (and let them back in), and delete it.
+
 The board then checks the composition against the group size (5-player dungeon, or a 10, 20, 25 or 40-player raid). It flags too few tanks or healers, too many of a role, class stacking and open spots, and names who could switch to a backup role.
 
 It's a single static page (`index.html`), hosted on GitHub Pages, with Firebase Firestore storing the shared data.

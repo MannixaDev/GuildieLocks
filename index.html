@@ -270,6 +270,20 @@ tbody tr:hover td { background: rgba(232, 182, 76, .05); }
 .dot { box-shadow: 0 0 0 1px #000, 0 0 6px rgba(255,255,255,.15); }
 footer { border-top: 1px solid var(--gold-lo); text-align: center; }
 
+/* Landing and leader controls */
+.home { display: grid; gap: 20px; width: 100%; max-width: 880px; margin: 0 auto; }
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items: start; }
+.choice { padding: 22px; gap: 14px; }
+.choice h2 { font-size: 1.5rem; }
+.choice p { margin: 0; color: var(--muted); }
+.codein { text-transform: uppercase; letter-spacing: .3em; font-size: 1.3rem; text-align: center; }
+.back { justify-self: start; background: none; border: none; color: var(--gold); font-family: var(--font-display); letter-spacing: .06em; cursor: pointer; padding: 4px 0; font-size: .95rem; }
+.back:hover { color: var(--gold-hi); }
+.lead { font-family: var(--font-display); font-size: .7rem; letter-spacing: .08em; color: var(--q-legendary); border: 1px solid currentColor; padding: 0 5px; border-radius: 2px; }
+.kick { font: inherit; font-size: .8rem; background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 2px; padding: 2px 8px; cursor: pointer; white-space: nowrap; }
+.kick:hover, .kick.armed { color: var(--crit); border-color: var(--crit); }
+.leader-tools { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 10px; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -292,14 +306,12 @@ footer { border-top: 1px solid var(--gold-lo); text-align: center; }
 
   <div id="notice" class="notice" hidden></div>
 
-  <div class="layout">
-    <aside class="rail">
-      <section class="panel">
-        <h3>Your groups</h3>
-        <div id="groupList" class="grouplist"><p class="muted" style="margin:0">Loading your groups…</p></div>
-      </section>
-      <section class="panel">
-        <h3>Start a group</h3>
+  <section id="home" class="home">
+    <div id="homeStatus"></div>
+    <div class="choices">
+      <section class="panel choice">
+        <h2>Create a group</h2>
+        <p>Name your group, pick its size, and you'll get a join code to share. You'll be its leader.</p>
         <form id="createForm" class="stack">
           <input id="newName" placeholder="Group name, e.g. Tuesday Raiders" maxlength="40" required>
           <select id="newSize" aria-label="Group size">
@@ -312,20 +324,23 @@ footer { border-top: 1px solid var(--gold-lo); text-align: center; }
           <button class="btn" type="submit" id="createBtn">Create group</button>
         </form>
       </section>
-      <section class="panel">
-        <h3>Join with a code</h3>
+      <section class="panel choice">
+        <h2>Join a group</h2>
+        <p>Got a code from your group leader? Enter it here.</p>
         <form id="joinForm" class="stack">
-          <div class="row">
-            <input id="joinCode" class="grow mono" placeholder="6-letter code" maxlength="6" autocomplete="off" style="text-transform:uppercase">
-            <button class="btn" type="submit" id="joinBtn">Join</button>
-          </div>
+          <input id="joinCode" class="mono codein" placeholder="ABC123" maxlength="6" autocomplete="off" aria-label="Join code">
+          <button class="btn" type="submit" id="joinBtn">Join group</button>
         </form>
         <div id="joinStatus" class="status"></div>
       </section>
-    </aside>
+    </div>
+    <section id="myGroups" class="panel" hidden>
+      <h3>Your groups</h3>
+      <div id="groupList" class="grouplist"></div>
+    </section>
+  </section>
 
-    <main id="board" class="board"></main>
-  </div>
+  <main id="board" class="board" hidden></main>
 
   <footer>GuildieLocks is a fan-made planning tool. World of Warcraft is a trademark of Blizzard Entertainment, which does not endorse or sponsor this site. Class and spec lists follow the published Forever guides and may change after launch.</footer>
 </div>
@@ -459,9 +474,9 @@ function syncGroupSubs() {
   }
 }
 function setActive(gid) {
-  if (gid === activeGid && membersUnsub) return;
+  if (gid === activeGid && (membersUnsub || !gid)) return;
   activeGid = gid;
-  try { localStorage.setItem("frp.active", gid || ""); } catch (e) {}
+  window.scrollTo(0, 0);
   if (membersUnsub) { membersUnsub(); membersUnsub = null; }
   activeMembers = [];
   if (gid) {
@@ -478,48 +493,79 @@ function setActive(gid) {
 function renderGroupList() {
   const el = $("groupList");
   el.replaceChildren();
-  if (!db) { el.append(h("p", { class: "muted", style: "margin:0" }, setupNeeded ? "Groups appear here once the site is connected to its database." : "Can't reach the database right now.")); return; }
-  if (!myData) { el.append(h("p", { class: "muted", style: "margin:0" }, "Loading your groups…")); return; }
-  if (!myData.groupIds.length) { el.append(h("p", { class: "muted", style: "margin:0" }, "No groups yet. Start one or join with a code.")); return; }
-  for (const gid of myData.groupIds) {
+  const ids = (db && myData) ? myData.groupIds : [];
+  $("myGroups").hidden = !ids.length;
+  for (const gid of ids) {
     const g = groups[gid];
     const name = g === null ? "Deleted group" : (g ? g.name : "Loading…");
-    el.append(h("button", { type: "button", "aria-current": gid === activeGid ? "true" : "false", onclick: () => setActive(gid) },
-      h("span", {}, name), h("span", { class: "sz" }, g ? g.size : "")));
+    el.append(h("button", { type: "button", onclick: () => setActive(gid) },
+      h("span", {}, name),
+      h("span", { class: "sz" }, g && g.ownerId === me ? "Leader · " : "", g ? (SIZES[g.size] || SIZES[10]).label : "")));
   }
 }
 
-// ---- Rendering: board --------------------------------------------------------
+// ---- Rendering: landing page ---------------------------------------------------
+let booting = true;
+function renderHome() {
+  const st = $("homeStatus");
+  st.replaceChildren();
+  const off = !db;
+  for (const id of ["newName", "newSize", "createBtn", "joinCode", "joinBtn"]) $(id).disabled = off;
+  if (booting) st.append(h("p", { class: "muted", style: "margin:0;text-align:center" }, "Connecting…"));
+  else if (setupNeeded) st.append(h("div", { class: "banner" }, h("h2", {}, "Almost ready"),
+    h("p", {}, "This site needs a free Firebase project to store groups, votes and picks. Fill in firebase-config.js using the steps in the README, then reload.")));
+  else if (!db) st.append(h("div", { class: "banner" }, h("h2", {}, "Couldn't connect"),
+    h("p", {}, "The planner's database didn't answer" + (connectError ? ": " + connectError : ".") + " Check your connection and reload.")));
+  renderGroupList();
+}
+
+// ---- Rendering: group board -----------------------------------------------------
 function renderBoard() {
+  $("home").hidden = !!activeGid;
+  $("board").hidden = !activeGid;
   const board = $("board");
   board.replaceChildren();
-  if (!db) {
-    board.append(setupNeeded
-      ? h("div", { class: "banner" }, h("h2", {}, "Almost ready"),
-          h("p", {}, "This site needs a free Firebase project to store groups, votes and picks. Fill in firebase-config.js using the steps in the README, then reload."))
-      : h("div", { class: "banner" }, h("h2", {}, "Couldn't connect"),
-          h("p", {}, "The planner's database didn't answer" + (connectError ? ": " + connectError : ".") + " Check your connection and reload.")));
-    renderExample(board);
-    return;
-  }
-  if (!myData) { board.append(h("div", { class: "panel" }, h("p", { class: "muted", style: "margin:0" }, "Loading the war table…"))); return; }
-  if (!activeGid) {
-    board.append(h("div", { class: "banner" },
-      h("h2", {}, "Example group"),
-      h("p", { style: "margin:.4em 0 0" }, "This is a made-up group so you can see how the board works. Start a group or join one with a code to plan your own.")));
-    renderExample(board);
-    return;
-  }
+  if (!activeGid) { renderHome(); return; }
+  board.append(h("button", { class: "back", type: "button", onclick: () => setActive(null) }, "← All groups"));
   const g = groups[activeGid];
   if (g === undefined) { board.append(h("div", { class: "panel" }, h("p", { class: "muted", style: "margin:0" }, "Loading group…"))); return; }
   if (g === null) {
     board.append(h("div", { class: "panel" }, h("h2", {}, "This group was deleted"),
-      h("p", { style: "margin:0" }, "Its creator removed it. You can take it off your list."),
+      h("p", { style: "margin:0" }, "Its leader deleted it. You can take it off your list."),
+      h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => leaveGroup(activeGid) }, "Remove from my list"))));
+    return;
+  }
+  if ((g.removed || []).includes(me)) {
+    board.append(h("div", { class: "panel" }, h("h2", {}, "You were removed from " + g.name),
+      h("p", { style: "margin:0" }, "The group leader took you off this group's roster."),
       h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => leaveGroup(activeGid) }, "Remove from my list"))));
     return;
   }
   board.append(renderHeader(g), renderEntry(activeGid), h("div", { id: "analysis", class: "board" }));
   renderAnalysis();
+}
+
+// ---- Leader actions ---------------------------------------------------------------
+async function updateGroup(patch, what) {
+  try { await db.doc("groups/" + activeGid).update(patch); }
+  catch (e) { showNotice(`Couldn't ${what}: ` + ((e && (e.message || e.code)) || "unknown error")); }
+}
+function removeMember(uid) {
+  const removed = new Set(groups[activeGid].removed || []); removed.add(uid);
+  updateGroup({ removed: [...removed] }, "remove that player");
+}
+function restoreMember(uid) {
+  updateGroup({ removed: (groups[activeGid].removed || []).filter(x => x !== uid) }, "let that player back in");
+}
+// A two-click button so nothing destructive happens on a single stray click.
+function confirmButton(label, armedLabel, cls, action) {
+  const b = h("button", { class: cls, type: "button" }, label);
+  let armed = false;
+  b.addEventListener("click", () => {
+    if (!armed) { armed = true; b.textContent = armedLabel; b.classList.add("armed"); setTimeout(() => { armed = false; b.textContent = label; b.classList.remove("armed"); }, 4000); return; }
+    action();
+  });
+  return b;
 }
 
 function renderHeader(g) {
@@ -538,24 +584,23 @@ function renderHeader(g) {
       h("div", {}, h("div", { class: "label" }, (SIZES[g.size] || SIZES[10]).label), h("h2", {}, g.name)),
       h("div", { class: "row" }, h("span", { class: "label" }, "Join code"), codeEl, copyBtn)));
 
-  const tools = h("div", { class: "row" });
   if (isOwner) {
+    const nameIn = h("input", { id: "editName", class: "grow", maxlength: "40", value: g.name, "aria-label": "Group name" });
+    const rename = h("button", { class: "btn ghost", type: "button" }, "Rename");
+    rename.addEventListener("click", () => { const v = nameIn.value.trim(); if (v && v !== g.name) updateGroup({ name: v }, "rename the group"); });
     const sizeSel = h("select", { id: "editSize", "aria-label": "Change group size" },
       Object.entries(SIZES).map(([k, v]) => h("option", { value: k, selected: String(g.size) === k }, v.label)));
-    sizeSel.addEventListener("change", async () => {
-      try { await db.doc("groups/" + activeGid).update({ size: Number(sizeSel.value) }); } catch (e) { showNotice("Couldn't change the size: " + (e.message || e.code)); }
-    });
-    const del = h("button", { class: "btn danger", type: "button" }, "Delete group");
-    let armed = false;
-    del.addEventListener("click", async () => {
-      if (!armed) { armed = true; del.textContent = "Click again to delete for everyone"; setTimeout(() => { armed = false; del.textContent = "Delete group"; }, 4000); return; }
+    sizeSel.addEventListener("change", () => updateGroup({ size: Number(sizeSel.value) }, "change the size"));
+    const del = confirmButton("Delete group", "Click again to delete for everyone", "btn danger", async () => {
       try { await db.doc("groups/" + activeGid).delete(); leaveGroup(activeGid); } catch (e) { showNotice("Couldn't delete: " + (e.message || e.code)); }
     });
-    tools.append(h("span", { class: "label" }, "Size"), sizeSel, del);
+    head.append(h("div", { class: "leader-tools" },
+      h("div", { class: "label" }, "Leader controls · remove players from the Muster Roll below"),
+      h("div", { class: "row" }, nameIn, rename),
+      h("div", { class: "row" }, h("span", { class: "label" }, "Size"), sizeSel, del)));
   } else {
-    tools.append(h("button", { class: "btn ghost", type: "button", onclick: () => leaveGroup(activeGid) }, "Leave group"));
+    head.append(h("div", { class: "row" }, confirmButton("Leave group", "Click again to leave", "btn ghost", () => leaveGroup(activeGid))));
   }
-  head.append(tools);
   return head;
 }
 function selectText(el) {
@@ -681,34 +726,25 @@ async function renderAnalysis() {
   const host = $("analysis");
   if (!host || !activeGid || !groups[activeGid]) return;
   const tok = ++renderToken;
+  const g = groups[activeGid];
+  const removed = new Set(g.removed || []);
   // Merge my local state over the snapshot so my own edits show instantly.
   const rows = activeMembers.filter(m => m.id !== me).map(m => ({ id: m.id, nick: m.data.nick, entry: (m.data.groups || {})[activeGid] || {} }));
   if (myData.groupIds.includes(activeGid)) rows.push({ id: me, nick: myData.nick, entry: myEntry(activeGid) });
   const ps = user ? await user.profiles(rows.map(r => r.id)) : {};
   if (tok !== renderToken) return;
-  const members = rows.map(r => {
+  const named = rows.map(r => {
     const p = ps[r.id] || {};
-    return { ...r, name: (r.nick || p.name || "Someone") + (r.id === me ? " (you)" : ""), avatar: p.avatarUrl };
+    return { ...r, name: (r.nick || p.name || "Unnamed adventurer") + (r.id === me ? " (you)" : ""), avatar: p.avatarUrl };
   }).sort((a, b) => a.name.localeCompare(b.name));
-  host.replaceChildren(...renderAnalysisPanels(groups[activeGid].size, members));
+  const isLeader = g.ownerId === me;
+  host.replaceChildren(...renderAnalysisPanels(g.size, named.filter(m => !removed.has(m.id)), {
+    ownerId: g.ownerId, isLeader,
+    removed: isLeader ? named.filter(m => removed.has(m.id)) : [],
+  }));
 }
 
-function renderExample(board) {
-  const ex = [
-    ["Brakka", "horde", [["warrior", "Protection"], ["warrior", "Fury"]]],
-    ["Selwyn", "alliance", [["priest", "Holy"], ["priest", "Shadow"]]],
-    ["Torvek", "horde", [["shaman", "Restoration"], ["shaman", "Enhancement"]]],
-    ["Ilsa", "horde", [["mage", "Frost"]]],
-    ["Doran", "alliance", [["rogue", "Combat"], ["druid", "Feral (Bear)"]]],
-    ["Mirelle", "horde", [["warlock", "Affliction"], ["priest", "Holy"]]],
-    ["Kast", null, [["mage", "Fire"]]],
-    ["Venna", "horde", [["hunter", "Marksmanship"]]],
-    ["Orrin", "alliance", [["paladin", "Retribution"], ["paladin", "Holy"]]],
-  ].map(([name, faction, picks]) => ({ id: name, name: "Example: " + name, entry: { faction, picks: picks.map(([c, s]) => ({ c, s })) } }));
-  board.append(h("div", { class: "board", style: "opacity:.92" }, ...renderAnalysisPanels(10, ex)));
-}
-
-function renderAnalysisPanels(size, members) {
+function renderAnalysisPanels(size, members, ctx = {}) {
   const a = analyse(size, members);
   const total = members.length;
 
@@ -761,19 +797,30 @@ function renderAnalysisPanels(size, members) {
       `${p.s} ${CLASS[p.c].name}`,
       h("span", { class: "role-" + r, title: ROLE_ONE[r], html: ICON[r] })));
   };
+  const cols = ["Player", "Faction", "1st choice", "2nd", "3rd"];
+  if (ctx.isLeader) cols.push("");
   const roster = h("section", { class: "panel" },
     h("div", { class: "ghead" }, h("h3", {}, "Muster Roll"), h("span", { class: "label" }, `${total} ${total === 1 ? "member" : "members"}`)),
     total ? h("div", { class: "tablewrap" }, h("table", {},
-      h("thead", {}, h("tr", {}, ["Player", "Faction", "1st choice", "2nd", "3rd"].map(t => h("th", {}, t)))),
+      h("thead", {}, h("tr", {}, cols.map(t => h("th", {}, t)))),
       h("tbody", {}, members.map(m => {
         const picks = validPicks(m.entry);
         const f = m.entry.faction;
-        return h("tr", {},
-          h("td", {}, h("span", { class: "who" }, m.avatar ? h("img", { src: m.avatar, alt: "" }) : null, m.name)),
+        const row = h("tr", {},
+          h("td", {}, h("span", { class: "who" }, m.avatar ? h("img", { src: m.avatar, alt: "" }) : null, m.name,
+            m.id === ctx.ownerId ? h("span", { class: "lead" }, "Leader") : null)),
           h("td", {}, h("span", { class: "fchip " + (f || "none") }, f === "horde" ? "Horde" : f === "alliance" ? "Alliance" : "Undecided")),
           pickCell(picks[0]), pickCell(picks[1]), pickCell(picks[2]));
+        if (ctx.isLeader) row.append(h("td", {}, m.id === me ? null : confirmButton("Remove", "Confirm remove", "kick", () => removeMember(m.id))));
+        return row;
       }))))
       : h("p", { class: "muted", style: "margin:0" }, "Nobody here yet. Share the join code."));
+  if (ctx.removed && ctx.removed.length) {
+    roster.append(h("div", { class: "leader-tools" },
+      h("div", { class: "label" }, "Removed players"),
+      ...ctx.removed.map(m => h("div", { class: "row" }, h("span", { class: "grow" }, m.name),
+        h("button", { class: "kick", type: "button", onclick: () => restoreMember(m.id) }, "Let back in")))));
+  }
 
   return [h("div", { class: "cols" }, faction, comp), h("div", { class: "cols" }, roster), h("div", { class: "cols" }, spread)];
 }
@@ -793,7 +840,8 @@ function leaveGroup(gid) {
   myData.groupIds = myData.groupIds.filter(x => x !== gid);
   delete myData.groups[gid];
   syncGroupSubs(); scheduleSave();
-  setActive(myData.groupIds[0] || null);
+  setActive(null);
+  renderBoard();
 }
 
 $("createForm").addEventListener("submit", async e => {
@@ -823,7 +871,8 @@ $("joinForm").addEventListener("submit", async e => {
   try {
     const snap = await db.doc("groups/" + code).get();
     if (!snap.exists) { st.textContent = "No group has that code. Check it with whoever sent it."; return; }
-    st.textContent = `Joined ${snap.data().name}.`;
+    if ((snap.data().removed || []).includes(me)) { st.textContent = "The leader of this group has removed you from it."; return; }
+    st.textContent = "";
     $("joinCode").value = "";
     addGroup(code);
   } catch (err) { st.textContent = "Couldn't look up the code: " + ((err && err.message) || "unknown error"); }
@@ -857,8 +906,10 @@ function makeDb(F, fs) {
 async function boot() {
   renderBoard();
   let cfg = null;
-  try { cfg = (await import("./firebase-config.js")).firebaseConfig; } catch (e) {}
-  if (!cfg || !cfg.apiKey || cfg.apiKey.startsWith("PASTE")) { setupNeeded = true; renderGroupList(); renderBoard(); return; }
+  // Cache-busted so a config change on GitHub Pages shows up on the next reload.
+  try { cfg = (await import("./firebase-config.js?v=" + Date.now())).firebaseConfig; } catch (e) {}
+  booting = false;
+  if (!cfg || !cfg.apiKey || cfg.apiKey.startsWith("PASTE")) { setupNeeded = true; renderBoard(); return; }
   try {
     const [A, Au, F] = await Promise.all([
       import(FIREBASE + "firebase-app.js"), import(FIREBASE + "firebase-auth.js"), import(FIREBASE + "firebase-firestore.js")]);
@@ -868,8 +919,9 @@ async function boot() {
     db = makeDb(F, F.getFirestore(app));
   } catch (e) {
     db = null; connectError = (e && (e.code || e.message)) || "";
-    renderGroupList(); renderBoard(); return;
+    renderBoard(); return;
   }
+  renderBoard();
   const timer = setTimeout(() => { if (!myData) showNotice("Can't reach the planner's data yet. Check your connection; it will load when it can."); }, 10000);
   let first = true;
   db.doc("members/" + me).onSnapshot(snap => {
@@ -883,12 +935,12 @@ async function boot() {
     syncGroupSubs();
     if (first) {
       first = false;
-      let saved = null; try { saved = localStorage.getItem("frp.active"); } catch (e) {}
-      setActive(myData.groupIds.includes(saved) ? saved : (myData.groupIds[0] || null));
+      // An invite link (#CODE) opens that group if you're in it, otherwise fills in the join box.
       const hash = (location.hash || "").slice(1).toUpperCase();
-      if (/^[A-Z0-9]{6}$/.test(hash) && !myData.groupIds.includes(hash)) $("joinCode").value = hash;
+      if (myData.groupIds.includes(hash)) setActive(hash);
+      else { if (/^[A-Z0-9]{6}$/.test(hash)) $("joinCode").value = hash; renderBoard(); }
     } else {
-      if (activeGid && !myData.groupIds.includes(activeGid)) setActive(myData.groupIds[0] || null);
+      if (activeGid && !myData.groupIds.includes(activeGid)) setActive(null);
       renderGroupList(); renderAnalysis();
     }
   }, err => { clearTimeout(timer); showNotice("The planner's data stopped responding. Reload the page to reconnect."); });
