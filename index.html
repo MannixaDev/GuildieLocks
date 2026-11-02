@@ -288,6 +288,21 @@ footer { border-top: 1px solid var(--gold-lo); text-align: center; }
 .opt:disabled { cursor: default; opacity: .7; }
 .opt svg.ri { width: 13px; height: 13px; }
 
+/* Races */
+.racegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.racecol { display: grid; gap: 6px; align-content: start; }
+.rlabel { font-family: var(--font-display); font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; }
+.rlabel.alliance, .rname.alliance { color: var(--alliance-hi); }
+.rlabel.horde, .rname.horde { color: var(--horde-hi); }
+.rlabel.both, .rname.both { color: var(--teal-hi); }
+.opt.race-alliance[aria-pressed="true"] { background: linear-gradient(180deg, #2a64c8, #12306a); border-color: var(--alliance-hi); box-shadow: 0 0 8px rgba(95, 164, 255, .4); }
+.opt.race-horde[aria-pressed="true"] { background: linear-gradient(180deg, #c22c1f, #5c0d07); border-color: var(--horde-hi); box-shadow: 0 0 8px rgba(255, 90, 60, .4); }
+.fill.rf-alliance { background: linear-gradient(180deg, #3577e0, #12306a); }
+.fill.rf-horde { background: linear-gradient(180deg, #d0392a, #6e140b); }
+.fill.rf-both { background: linear-gradient(180deg, var(--teal), var(--teal-deep)); }
+.hints { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.hints li { font-size: .9rem; padding: 6px 10px; border-left: 3px solid var(--warn); background: var(--warn-bg); border-radius: 2px; }
+
 /* Landing and leader controls */
 .home { display: grid; gap: 20px; width: 100%; max-width: 880px; margin: 0 auto; }
 .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items: start; }
@@ -380,6 +395,30 @@ const CLASSES = [
   { id: "druid", name: "Druid", color: "#FF7C0A", specs: [["Balance", "ranged"], ["Feral (Cat)", "melee"], ["Feral (Bear)", "tank"], ["Restoration", "heal"]] },
 ];
 const ALL_SPECS = CLASSES.flatMap(c => c.specs.map(([s, r]) => ({ c: c.id, s, r })));
+// Forever's race/class table (Warcraft Wiki, November 2026). Skyborne can join either
+// faction, but only Alliance Skyborne can be mages and only Horde Skyborne can be shaman.
+const RACES = [
+  { id: "dwarf", name: "Dwarf", faction: "alliance", classes: ["hunter", "paladin", "priest", "rogue", "shaman", "warrior"] },
+  { id: "gnome", name: "Gnome", faction: "alliance", classes: ["mage", "priest", "rogue", "warlock", "warrior"] },
+  { id: "human", name: "Human", faction: "alliance", classes: ["hunter", "mage", "paladin", "priest", "rogue", "warlock", "warrior"] },
+  { id: "nightelf", name: "Night Elf", faction: "alliance", classes: ["druid", "hunter", "priest", "rogue", "warrior"] },
+  { id: "skyborne", name: "Skyborne", faction: "both", classes: ["druid", "hunter", "mage", "rogue", "shaman", "warrior"] },
+  { id: "orc", name: "Orc", faction: "horde", classes: ["hunter", "mage", "rogue", "shaman", "warlock", "warrior"] },
+  { id: "tauren", name: "Tauren", faction: "horde", classes: ["druid", "hunter", "shaman", "warrior"] },
+  { id: "troll", name: "Troll", faction: "horde", classes: ["hunter", "mage", "priest", "rogue", "shaman", "warlock", "warrior"] },
+  { id: "undead", name: "Undead", faction: "horde", classes: ["mage", "paladin", "priest", "rogue", "warlock", "warrior"] },
+];
+const RACE = Object.fromEntries(RACES.map(r => [r.id, r]));
+const SKYBORNE_ONLY = { mage: "alliance", shaman: "horde" };
+// Why a race can't play a class (for a given faction vote), or null if it can.
+function raceClassProblem(raceId, classId, faction) {
+  const r = RACE[raceId], c = CLASS[classId];
+  if (!r || !c) return null;
+  if (!r.classes.includes(classId)) return `${r.name} can't be a ${c.name}.`;
+  if (raceId === "skyborne" && SKYBORNE_ONLY[classId] && faction && faction !== SKYBORNE_ONLY[classId])
+    return `Only ${SKYBORNE_ONLY[classId] === "alliance" ? "Alliance" : "Horde"} Skyborne can be ${c.name}s.`;
+  return null;
+}
 const KIND_NAME = { tank: "tank", heal: "healer", melee: "melee DPS", ranged: "ranged DPS" };
 const CLASS = Object.fromEntries(CLASSES.map(c => [c.id, c]));
 // Role targets scale with however many players are in the group:
@@ -428,7 +467,8 @@ function normEntry(e) {
   e = e || {};
   const wants = (Array.isArray(e.wants) ? e.wants : (e.picks || []).map(p => `spec:${p.c}:${p.s}`)).filter(t => specsOf(t).length);
   const main = e.main === "any" ? "any" : wants.includes(e.main) ? e.main : (wants[0] || null);
-  return { faction: e.faction || null, wants, main };
+  const races = (Array.isArray(e.races) ? e.races : []).filter(r => RACE[r]);
+  return { faction: e.faction || null, wants, main, races };
 }
 
 // ---- Small DOM helpers ------------------------------------------------------
@@ -465,7 +505,8 @@ let saveTimer = null, saving = false, saveAgain = false;
 
 function emptyMine() { return { nick: "", groupIds: [], groups: {} }; }
 function myEntry(gid) {
-  if (!myData.groups[gid] || !Array.isArray(myData.groups[gid].wants)) myData.groups[gid] = normEntry(myData.groups[gid]);
+  const cur = myData.groups[gid];
+  if (!cur || !Array.isArray(cur.wants) || !Array.isArray(cur.races)) myData.groups[gid] = normEntry(cur);
   return myData.groups[gid];
 }
 
@@ -657,7 +698,7 @@ function renderEntry(gid) {
     b.addEventListener("click", () => {
       entry.faction = entry.faction === side ? null : side;
       wrap.querySelectorAll(".fbtn").forEach(x => x.setAttribute("aria-pressed", x.classList.contains(entry.faction) ? "true" : "false"));
-      scheduleSave(); renderAnalysis();
+      drawPicker(); scheduleSave(); renderAnalysis();
     });
     return b;
   };
@@ -700,9 +741,23 @@ function renderEntry(gid) {
       const sel = h("select", { id: "mainPick", class: "grow", "aria-label": "Top choice", disabled: readOnly },
         h("option", { value: "any", selected: entry.main === "any" }, "No preference, put me where the group needs me"),
         entry.wants.map(t => h("option", { value: t, selected: entry.main === t }, tokenLabel(t))));
-      sel.addEventListener("change", () => { entry.main = sel.value; scheduleSave(); renderAnalysis(); });
+      sel.addEventListener("change", () => { entry.main = sel.value; drawPicker(); scheduleSave(); renderAnalysis(); });
       picker.append(h("div", { class: "row" }, h("label", { class: "label", for: "mainPick" }, "Top choice"), sel));
     }
+
+    const hasRace = id => entry.races.includes(id);
+    const toggleRace = id => {
+      entry.races = hasRace(id) ? entry.races.filter(x => x !== id) : [...entry.races, id];
+      drawPicker(); scheduleSave(); renderAnalysis();
+    };
+    picker.append(
+      h("div", { class: "label" }, "Races you'd play (leave blank if any is fine)"),
+      h("div", { class: "racegrid" }, [["alliance", "Alliance"], ["both", "Either faction"], ["horde", "Horde"]].map(([f, label]) =>
+        h("div", { class: "racecol" }, h("div", { class: "rlabel " + f }, label),
+          h("div", { class: "optrow" }, RACES.filter(r => r.faction === f).map(r =>
+            h("button", { type: "button", class: "opt race-" + f, "aria-pressed": hasRace(r.id) ? "true" : "false", disabled: readOnly, onclick: () => toggleRace(r.id) }, r.name)))))));
+    const hints = raceHints(entry);
+    if (hints.length) picker.append(h("ul", { class: "hints" }, hints.map(t => h("li", {}, t))));
   };
   drawPicker();
 
@@ -717,6 +772,21 @@ function renderEntry(gid) {
   return wrap;
 }
 
+// Heads-ups shown under the race picker when picks don't line up.
+function raceHints(e) {
+  const out = new Set();
+  if (!e.races.length) return [];
+  const mainCls = e.main && e.main !== "any" ? tokenClass(e.main) : null;
+  if (mainCls) for (const r of e.races) { const p = raceClassProblem(r, mainCls, e.faction); if (p) out.add(p); }
+  const classes = [...new Set(e.wants.flatMap(specsOf).map(x => x.c))];
+  if (classes.length && !e.races.some(r => classes.some(c => !raceClassProblem(r, c, e.faction))))
+    out.add("None of your races can play any of the classes you picked.");
+  const sides = new Set(e.races.map(r => RACE[r].faction));
+  if (e.faction && !sides.has("both") && !sides.has(e.faction))
+    out.add(`You voted ${e.faction === "horde" ? "Horde" : "Alliance"} but only picked ${e.faction === "horde" ? "Alliance" : "Horde"} races.`);
+  return [...out];
+}
+
 // ---- Analysis ----------------------------------------------------------------
 function analyse(members) {
   const size = members.length;
@@ -729,9 +799,13 @@ function analyse(members) {
   const unpicked = [], floaters = [];
   let horde = 0, alliance = 0, undecided = 0;
   const assign = (m, r, auto) => { counts[r]++; byRole[r].push(m.name); m.role = r; m.auto = auto; };
+  const raceCount = {}, onlySide = { alliance: [], horde: [] };
   for (const m of members) {
     const e = m.entry;
     if (e.faction === "horde") horde++; else if (e.faction === "alliance") alliance++; else undecided++;
+    for (const r of e.races) raceCount[r] = (raceCount[r] || 0) + 1;
+    const sides = new Set(e.races.map(r => RACE[r].faction));
+    if (sides.size === 1 && !sides.has("both")) onlySide[[...sides][0]].push(m.name);
     if (!e.wants.length) { unpicked.push(m.name); continue; }
     m.can = new Set(e.wants.flatMap(rolesOf));
     const mainRoles = e.main && e.main !== "any" ? rolesOf(e.main) : [];
@@ -788,7 +862,7 @@ function analyse(members) {
   else if (!issues.some(i => i[0] === "warn")) verdict = ["good", picked >= size ? "Balanced" : "On track"];
   else verdict = ["warn", "Needs attention"];
   if (verdict[0] === "good") issues.unshift(["good", `Tank and healer counts suit a group of ${size}.`]);
-  return { t, counts, classCount, issues, verdict, horde, alliance, undecided, picked };
+  return { t, counts, classCount, raceCount, onlySide, issues, verdict, horde, alliance, undecided, picked };
 }
 
 let renderToken = 0;
@@ -829,6 +903,11 @@ function renderAnalysisPanels(members, ctx = {}) {
       h("span", { style: "color:var(--horde);font-weight:700" }, `Horde ${a.horde}`),
       h("span", { class: "muted" }, `${a.undecided} undecided`),
       h("span", { style: "color:var(--alliance);font-weight:700" }, `Alliance ${a.alliance}`)));
+  for (const [side, other] of [["alliance", "Horde"], ["horde", "Alliance"]]) {
+    const who = a.onlySide[side];
+    if (who.length) faction.append(h("p", { class: "muted", style: "margin:0;font-size:.9rem" },
+      `If ${other} wins, ${listNames(who)} ${who.length === 1 ? "needs" : "need"} a new race: they only picked ${side === "alliance" ? "Alliance" : "Horde"} races.`));
+  }
 
   // Composition
   const meters = h("div", { class: "meters" });
@@ -858,6 +937,18 @@ function renderAnalysisPanels(members, ctx = {}) {
         h("span", { class: "v" }, n));
     })));
 
+  // Races
+  const rmax = Math.max(1, ...Object.values(a.raceCount));
+  const noRace = members.filter(m => !m.entry.races.length).length;
+  const races = h("section", { class: "panel" }, h("h3", {}, "Race picks"),
+    h("div", { class: "spread" }, RACES.map(r => {
+      const n = a.raceCount[r.id] || 0;
+      return h("div", { class: "bar" }, h("span", { class: "rname " + r.faction }, r.name),
+        h("div", { class: "track" }, h("div", { class: "fill rf-" + r.faction, style: `width:${(n / rmax) * 100}%` })),
+        h("span", { class: "v" }, n));
+    })),
+    noRace ? h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, `${noRace} ${noRace === 1 ? "player is" : "players are"} happy with any race.`) : null);
+
   // Roster
   const tokenChip = tok => {
     const cid = tokenClass(tok), rs = rolesOf(tok);
@@ -866,7 +957,7 @@ function renderAnalysisPanels(members, ctx = {}) {
       tokenLabel(tok),
       rs.length === 1 ? h("span", { class: "role-" + rs[0], title: ROLE_ONE[rs[0]], html: ICON[rs[0]] }) : null);
   };
-  const cols = ["Player", "Faction", "Top choice", "Counted as", "Also happy to play"];
+  const cols = ["Player", "Faction", "Race", "Top choice", "Counted as", "Also happy to play"];
   if (ctx.isLeader) cols.push("");
   const roster = h("section", { class: "panel" },
     h("div", { class: "ghead" }, h("h3", {}, "Muster Roll"), h("span", { class: "label" }, `${total} ${total === 1 ? "member" : "members"}`)),
@@ -879,6 +970,7 @@ function renderAnalysisPanels(members, ctx = {}) {
           h("td", {}, h("span", { class: "who" }, m.avatar ? h("img", { src: m.avatar, alt: "" }) : null, m.name,
             m.id === ctx.ownerId ? h("span", { class: "lead" }, "Leader") : null)),
           h("td", {}, h("span", { class: "fchip " + (f || "none") }, f === "horde" ? "Horde" : f === "alliance" ? "Alliance" : "Undecided")),
+          h("td", {}, e.races.length ? h("div", { class: "chips" }, e.races.map(r => h("span", { class: "rname " + RACE[r].faction }, RACE[r].name))) : h("span", { class: "muted" }, "Any")),
           h("td", {}, !e.wants.length ? h("span", { class: "muted" }, "Not picked yet") : e.main === "any" ? h("span", { class: "muted" }, "No preference") : tokenChip(e.main)),
           h("td", {}, m.role ? h("span", { class: "chip role-" + m.role, html: ICON[m.role] }, ROLE_ONE[m.role], m.auto ? h("span", { class: "muted" }, " (flex)") : null) : h("span", { class: "muted" }, "–")),
           h("td", {}, others.length ? h("div", { class: "chips" }, others.map(tokenChip)) : h("span", { class: "muted" }, "–")));
@@ -893,7 +985,7 @@ function renderAnalysisPanels(members, ctx = {}) {
         h("button", { class: "kick", type: "button", onclick: () => restoreMember(m.id) }, "Let back in")))));
   }
 
-  return [h("div", { class: "cols" }, faction, comp), h("div", { class: "cols" }, roster), h("div", { class: "cols" }, spread)];
+  return [h("div", { class: "cols" }, faction, comp), h("div", { class: "cols" }, roster), h("div", { class: "cols" }, spread, races)];
 }
 
 // ---- Actions ------------------------------------------------------------------
