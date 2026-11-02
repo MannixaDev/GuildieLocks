@@ -2,7 +2,9 @@
 
 A planning board for World of Warcraft: Forever groups. Start a group, share its join code, and everyone:
 
-- votes **Horde or Alliance**
+- enters their character's **first and last name**
+- votes **Horde or Alliance**, and on the **realm type** (Normal, PvP, RP, RP-PvP, Hardcore)
+- picks up to two primary **professions** plus any secondary skills, so the board can show which professions the group covers
 - picks everything they'd happily play: single **specs**, a whole **class** ("any spec"), or a whole **role** (any tank, healer, melee or ranged DPS), plus an optional top choice
 - picks the **races** they'd play. The page warns about race/class combos Forever doesn't allow, and about races that clash with their faction vote
 

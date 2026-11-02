@@ -288,6 +288,13 @@ footer { border-top: 1px solid var(--gold-lo); text-align: center; }
 .opt:disabled { cursor: default; opacity: .7; }
 .opt svg.ri { width: 13px; height: 13px; }
 
+/* Professions */
+.proflist { display: grid; gap: 2px; }
+.profrow { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; padding: 4px 0; border-bottom: 1px solid rgba(47, 66, 71, .5); font-size: .92rem; }
+.profrow:last-child { border-bottom: none; }
+.profrow .pname { font-family: var(--font-display); color: var(--gold); }
+.profrow.empty .pname, .profrow.empty .pwho { color: var(--muted); }
+
 /* Races */
 .racegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
 .racecol { display: grid; gap: 6px; align-content: start; }
@@ -409,6 +416,14 @@ const RACES = [
   { id: "undead", name: "Undead", faction: "horde", classes: ["mage", "paladin", "priest", "rogue", "warlock", "warrior"] },
 ];
 const RACE = Object.fromEntries(RACES.map(r => [r.id, r]));
+const PROFESSIONS = [
+  ["alchemy", "Alchemy", "primary"], ["blacksmithing", "Blacksmithing", "primary"], ["enchanting", "Enchanting", "primary"],
+  ["engineering", "Engineering", "primary"], ["herbalism", "Herbalism", "primary"], ["leatherworking", "Leatherworking", "primary"],
+  ["mining", "Mining", "primary"], ["skinning", "Skinning", "primary"], ["tailoring", "Tailoring", "primary"],
+  ["cooking", "Cooking", "secondary"], ["firstaid", "First Aid", "secondary"], ["fishing", "Fishing", "secondary"],
+].map(([id, name, kind]) => ({ id, name, kind }));
+const PROF = Object.fromEntries(PROFESSIONS.map(p => [p.id, p]));
+const RULESET_NAME = { normal: "Normal", pvp: "PvP", rp: "RP", rppvp: "RP-PvP", hardcore: "Hardcore" };
 const SKYBORNE_ONLY = { mage: "alliance", shaman: "horde" };
 // Why a race can't play a class (for a given faction vote), or null if it can.
 function raceClassProblem(raceId, classId, faction) {
@@ -468,7 +483,9 @@ function normEntry(e) {
   const wants = (Array.isArray(e.wants) ? e.wants : (e.picks || []).map(p => `spec:${p.c}:${p.s}`)).filter(t => specsOf(t).length);
   const main = e.main === "any" ? "any" : wants.includes(e.main) ? e.main : (wants[0] || null);
   const races = (Array.isArray(e.races) ? e.races : []).filter(r => RACE[r]);
-  return { faction: e.faction || null, wants, main, races };
+  const profs = (Array.isArray(e.profs) ? e.profs : []).filter(p => PROF[p]);
+  const ruleset = RULESET_NAME[e.ruleset] ? e.ruleset : null;
+  return { faction: e.faction || null, wants, main, races, profs, ruleset };
 }
 
 // ---- Small DOM helpers ------------------------------------------------------
@@ -503,10 +520,12 @@ let activeMembers = [];       // [{id, data}]
 let membersUnsub = null;
 let saveTimer = null, saving = false, saveAgain = false;
 
-function emptyMine() { return { nick: "", groupIds: [], groups: {} }; }
+function emptyMine() { return { nick: "", first: "", last: "", groupIds: [], groups: {} }; }
+// Forever characters have a first and last name; older entries only have a nickname.
+function charName(d) { return [d.first, d.last].filter(Boolean).join(" ") || d.nick || ""; }
 function myEntry(gid) {
   const cur = myData.groups[gid];
-  if (!cur || !Array.isArray(cur.wants) || !Array.isArray(cur.races)) myData.groups[gid] = normEntry(cur);
+  if (!cur || !Array.isArray(cur.wants) || !Array.isArray(cur.races) || !Array.isArray(cur.profs)) myData.groups[gid] = normEntry(cur);
   return myData.groups[gid];
 }
 
@@ -690,8 +709,29 @@ function selectText(el) {
 // "Your entry" is rendered once per group switch so typing never loses focus.
 function renderEntry(gid) {
   const entry = myEntry(gid);
-  const nick = h("input", { id: "nick", class: "grow", placeholder: "Character or nickname", maxlength: "24", value: myData.nick || "" });
-  nick.addEventListener("input", () => { myData.nick = nick.value.trim(); scheduleSave(); renderAnalysis(); });
+  // Older entries only had a nickname: start the first-name box from it.
+  const nameIn = (id, key, ph, fallback) => {
+    const el = h("input", { id, class: "grow", placeholder: ph, maxlength: "12", autocomplete: "off", value: myData[key] || fallback || "" });
+    el.addEventListener("input", () => {
+      myData[key] = el.value.trim();
+      myData.nick = charName({ first: myData.first, last: myData.last }).slice(0, 24);
+      scheduleSave(); renderAnalysis();
+    });
+    // Names read like names: capitalise the first letter when you leave the box.
+    el.addEventListener("blur", () => {
+      const v = el.value.trim(); const c = v ? v[0].toUpperCase() + v.slice(1) : "";
+      if (c !== el.value) { el.value = c; el.dispatchEvent(new Event("input")); }
+    });
+    return el;
+  };
+  const firstIn = nameIn("firstName", "first", "First name", myData.first ? "" : myData.nick);
+  const lastIn = nameIn("lastName", "last", "Last name");
+
+  const realmBox = h("div", { class: "optrow" });
+  const drawRealm = () => realmBox.replaceChildren(...Object.entries(RULESET_NAME).map(([id, name]) => [id, id === "hardcore" ? name + " (later)" : name]).map(([id, label]) =>
+    h("button", { type: "button", class: "opt big", "aria-pressed": entry.ruleset === id ? "true" : "false", disabled: readOnly,
+      onclick: () => { entry.ruleset = entry.ruleset === id ? null : id; drawRealm(); scheduleSave(); renderAnalysis(); } }, label)));
+  drawRealm();
 
   const fb = side => {
     const b = h("button", { type: "button", class: "fbtn " + side, "aria-pressed": entry.faction === side ? "true" : "false", html: FACTION_ICON[side] }, side === "horde" ? "Horde" : "Alliance");
@@ -758,14 +798,34 @@ function renderEntry(gid) {
             h("button", { type: "button", class: "opt race-" + f, "aria-pressed": hasRace(r.id) ? "true" : "false", disabled: readOnly, onclick: () => toggleRace(r.id) }, r.name)))))));
     const hints = raceHints(entry);
     if (hints.length) picker.append(h("ul", { class: "hints" }, hints.map(t => h("li", {}, t))));
+
+    // Professions: two primaries at most, secondaries are free.
+    const primaries = entry.profs.filter(p => PROF[p].kind === "primary");
+    const toggleProf = id => {
+      entry.profs = entry.profs.includes(id) ? entry.profs.filter(x => x !== id) : [...entry.profs, id];
+      drawPicker(); scheduleSave(); renderAnalysis();
+    };
+    const profChip = p => {
+      const on = entry.profs.includes(p.id);
+      const full = p.kind === "primary" && !on && primaries.length >= 2;
+      return h("button", { type: "button", class: "opt", "aria-pressed": on ? "true" : "false", disabled: full || readOnly,
+        title: full ? "You already have two primary professions" : null, onclick: () => toggleProf(p.id) }, p.name);
+    };
+    picker.append(
+      h("div", { class: "label" }, `Primary professions (pick up to 2 · ${primaries.length}/2)`),
+      h("div", { class: "optrow" }, PROFESSIONS.filter(p => p.kind === "primary").map(profChip)),
+      h("div", { class: "label" }, "Secondary skills"),
+      h("div", { class: "optrow" }, PROFESSIONS.filter(p => p.kind === "secondary").map(profChip)));
   };
   drawPicker();
 
   const wrap = h("section", { class: "panel" },
     h("div", { class: "ghead" }, h("h3", {}, "Your Character"), h("div", { id: "saveStatus", class: "status" }, readOnly ? "Read only" : "")),
-    h("div", { class: "row" }, h("label", { class: "label", for: "nick" }, "Name"), nick),
+    h("div", { class: "row" }, h("label", { class: "label", for: "firstName" }, "Character name"), firstIn, lastIn),
     h("div", { class: "label" }, "Choose your allegiance"),
     h("div", { class: "fbtns" }, fb("horde"), fb("alliance")),
+    h("div", { class: "label" }, "Realm type you'd play on"),
+    realmBox,
     picker,
     h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, "Your top choice counts toward the group's comp. Everything else shows who could switch roles, and players with no preference are slotted wherever the group is short."));
   if (readOnly) wrap.querySelectorAll("input,select,button").forEach(x => x.disabled = true);
@@ -800,8 +860,11 @@ function analyse(members) {
   let horde = 0, alliance = 0, undecided = 0;
   const assign = (m, r, auto) => { counts[r]++; byRole[r].push(m.name); m.role = r; m.auto = auto; };
   const raceCount = {}, onlySide = { alliance: [], horde: [] };
+  const rulesetCount = {}, profWho = {};
   for (const m of members) {
     const e = m.entry;
+    if (e.ruleset) rulesetCount[e.ruleset] = (rulesetCount[e.ruleset] || 0) + 1;
+    for (const p of e.profs) (profWho[p] = profWho[p] || []).push(m.name);
     if (e.faction === "horde") horde++; else if (e.faction === "alliance") alliance++; else undecided++;
     for (const r of e.races) raceCount[r] = (raceCount[r] || 0) + 1;
     const sides = new Set(e.races.map(r => RACE[r].faction));
@@ -869,7 +932,7 @@ function analyse(members) {
   else if (!issues.some(i => i[0] === "warn")) verdict = ["good", picked >= size ? "Balanced" : "On track"];
   else verdict = ["warn", "Needs attention"];
   if (verdict[0] === "good") issues.unshift(["good", `Tank and healer counts suit a group of ${size}.`]);
-  return { t, counts, classCount, raceCount, onlySide, issues, verdict, horde, alliance, undecided, picked };
+  return { t, counts, classCount, raceCount, onlySide, rulesetCount, profWho, issues, verdict, horde, alliance, undecided, picked };
 }
 
 let renderToken = 0;
@@ -880,8 +943,8 @@ async function renderAnalysis() {
   const g = groups[activeGid];
   const removed = new Set(g.removed || []);
   // Merge my local state over the snapshot so my own edits show instantly.
-  const rows = activeMembers.filter(m => m.id !== me).map(m => ({ id: m.id, nick: m.data.nick, entry: normEntry((m.data.groups || {})[activeGid]) }));
-  if (myData.groupIds.includes(activeGid)) rows.push({ id: me, nick: myData.nick, entry: normEntry(myEntry(activeGid)) });
+  const rows = activeMembers.filter(m => m.id !== me).map(m => ({ id: m.id, nick: charName(m.data), entry: normEntry((m.data.groups || {})[activeGid]) }));
+  if (myData.groupIds.includes(activeGid)) rows.push({ id: me, nick: charName(myData), entry: normEntry(myEntry(activeGid)) });
   const ps = user ? await user.profiles(rows.map(r => r.id)) : {};
   if (tok !== renderToken) return;
   const named = rows.map(r => {
@@ -915,6 +978,34 @@ function renderAnalysisPanels(members, ctx = {}) {
     if (who.length) faction.append(h("p", { class: "muted", style: "margin:0;font-size:.9rem" },
       `If ${other} wins, ${listNames(who)} ${who.length === 1 ? "needs" : "need"} a new race: they only picked ${side === "alliance" ? "Alliance" : "Horde"} races.`));
   }
+
+  // Realm vote
+  const votes = Object.entries(a.rulesetCount).sort((x, y) => y[1] - x[1]);
+  const realmLead = !votes.length ? "No votes yet"
+    : votes.length > 1 && votes[0][1] === votes[1][1] ? "Tied"
+    : `${RULESET_NAME[votes[0][0]]} leads`;
+  const vmax = Math.max(1, ...Object.values(a.rulesetCount));
+  const realm = h("section", { class: "panel" },
+    h("div", { class: "ghead" }, h("h3", {}, "Realm vote"), h("span", { class: "label" }, realmLead)),
+    h("div", { class: "spread" }, Object.entries(RULESET_NAME).map(([id, name]) => {
+      const n = a.rulesetCount[id] || 0;
+      return h("div", { class: "bar" }, h("span", {}, name),
+        h("div", { class: "track" }, h("div", { class: "fill rf-both", style: `width:${(n / vmax) * 100}%` })),
+        h("span", { class: "v" }, n));
+    })),
+    h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, "Forever puts each ruleset on one big realm per region, so the group needs to agree. Hardcore arrives after launch."));
+
+  // Professions
+  const missing = PROFESSIONS.filter(p => p.kind === "primary" && !a.profWho[p.id]).map(p => p.name);
+  const profs = h("section", { class: "panel" }, h("h3", {}, "Professions"),
+    h("div", { class: "proflist" }, PROFESSIONS.map(p => {
+      const who = a.profWho[p.id] || [];
+      return h("div", { class: "profrow" + (who.length ? "" : " empty") },
+        h("span", { class: "pname" }, p.name, p.kind === "secondary" ? h("span", { class: "muted" }, " · secondary") : null),
+        h("span", { class: "pwho" }, who.length ? who.join(", ") : "Nobody yet"));
+    })),
+    missing.length && members.some(m => m.entry.profs.length)
+      ? h("ul", { class: "issues" }, h("li", { class: "info" }, `No one has picked ${listNames(missing)} yet.`)) : null);
 
   // Composition
   const meters = h("div", { class: "meters" });
@@ -964,7 +1055,7 @@ function renderAnalysisPanels(members, ctx = {}) {
       tokenLabel(tok),
       rs.length === 1 ? h("span", { class: "role-" + rs[0], title: ROLE_ONE[rs[0]], html: ICON[rs[0]] }) : null);
   };
-  const cols = ["Player", "Faction", "Race", "Top choice", "Counted as", "Also happy to play"];
+  const cols = ["Player", "Faction · realm", "Race", "Top choice", "Counted as", "Also happy to play", "Professions"];
   if (ctx.isLeader) cols.push("");
   const roster = h("section", { class: "panel" },
     h("div", { class: "ghead" }, h("h3", {}, "Muster Roll"), h("span", { class: "label" }, `${total} ${total === 1 ? "member" : "members"}`)),
@@ -976,11 +1067,13 @@ function renderAnalysisPanels(members, ctx = {}) {
         const row = h("tr", {},
           h("td", {}, h("span", { class: "who" }, m.avatar ? h("img", { src: m.avatar, alt: "" }) : null, m.name,
             m.id === ctx.ownerId ? h("span", { class: "lead" }, "Leader") : null)),
-          h("td", {}, h("span", { class: "fchip " + (f || "none") }, f === "horde" ? "Horde" : f === "alliance" ? "Alliance" : "Undecided")),
+          h("td", {}, h("span", { class: "fchip " + (f || "none") }, f === "horde" ? "Horde" : f === "alliance" ? "Alliance" : "Undecided"),
+            e.ruleset ? h("div", { class: "muted", style: "font-size:.8rem;margin-top:3px" }, RULESET_NAME[e.ruleset]) : null),
           h("td", {}, e.races.length ? h("div", { class: "chips" }, e.races.map(r => h("span", { class: "rname " + RACE[r].faction }, RACE[r].name))) : h("span", { class: "muted" }, "Any")),
           h("td", {}, !e.wants.length ? h("span", { class: "muted" }, "Not picked yet") : e.main === "any" ? h("span", { class: "muted" }, "No preference") : tokenChip(e.main)),
           h("td", {}, m.role ? h("span", { class: "chip role-" + m.role, html: ICON[m.role] }, ROLE_ONE[m.role], m.auto ? h("span", { class: "muted" }, " (flex)") : null) : h("span", { class: "muted" }, "–")),
-          h("td", {}, others.length ? h("div", { class: "chips" }, others.map(tokenChip)) : h("span", { class: "muted" }, "–")));
+          h("td", {}, others.length ? h("div", { class: "chips" }, others.map(tokenChip)) : h("span", { class: "muted" }, "–")),
+          h("td", {}, e.profs.length ? e.profs.map(p => PROF[p].name).join(", ") : h("span", { class: "muted" }, "–")));
         if (ctx.isLeader) row.append(h("td", {}, m.id === me ? null : confirmButton("Remove", "Confirm remove", "kick", () => removeMember(m.id))));
         return row;
       }))))
@@ -992,7 +1085,12 @@ function renderAnalysisPanels(members, ctx = {}) {
         h("button", { class: "kick", type: "button", onclick: () => restoreMember(m.id) }, "Let back in")))));
   }
 
-  return [h("div", { class: "cols" }, faction, comp), h("div", { class: "cols" }, roster), h("div", { class: "cols" }, spread, races)];
+  return [
+    h("div", { class: "cols" }, faction, realm),
+    h("div", { class: "cols" }, comp, profs),
+    h("div", { class: "cols" }, roster),
+    h("div", { class: "cols" }, spread, races),
+  ];
 }
 
 // ---- Actions ------------------------------------------------------------------
