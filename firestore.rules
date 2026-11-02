@@ -11,11 +11,18 @@ service cloud.firestore {
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.name is string
         && request.resource.data.name.size() <= 40;
+      // The leader can change anything, including handing leadership to someone else.
+      // Co-leaders can rename and remove players, but can't change who leads,
+      // change the co-leader list, or remove the leader.
       allow update: if request.auth != null
-        && resource.data.ownerId == request.auth.uid
-        && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.name is string
-        && request.resource.data.name.size() <= 40;
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.ownerId is string
+        && (resource.data.ownerId == request.auth.uid
+          || (request.auth.uid in resource.data.get('coLeaders', [])
+            && request.resource.data.ownerId == resource.data.ownerId
+            && request.resource.data.get('coLeaders', []) == resource.data.get('coLeaders', [])
+            && !(resource.data.ownerId in request.resource.data.get('removed', []))));
       allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
     }
 

@@ -8,7 +8,9 @@ A planning board for World of Warcraft: Forever groups. Start a group, share its
 - picks everything they'd happily play: single **specs**, a whole **class** ("any spec"), or a whole **role** (any tank, healer, melee or ranged DPS), plus an optional top choice
 - picks the **races** they'd play. The page warns about race/class combos Forever doesn't allow, and about races that clash with their faction vote
 
-Whoever creates a group is its **leader**. The leader can rename it, remove players (and let them back in), and delete it.
+Whoever creates a group is its **leader**. The leader can rename it, remove players (and let them back in), delete it, make players **co-leaders**, and **hand over leadership** (the old leader stays on as a co-leader). Co-leaders can rename the group and remove or re-admit players, but can't delete it, change co-leaders, or remove the leader.
+
+Leadership is tied to the browser you used, so add a co-leader early in case you lose access.
 
 Groups can be any size. The board works out how many tanks and healers the group needs from how many players have joined (for example, 10 players → 2 tanks and 3 healers). It flags too few tanks or healers, too many of a role and class stacking, and names who could switch to a backup role.
 

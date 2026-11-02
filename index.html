@@ -322,6 +322,8 @@ footer { border-top: 1px solid var(--gold-lo); text-align: center; }
 .lead { font-family: var(--font-display); font-size: .7rem; letter-spacing: .08em; color: var(--q-legendary); border: 1px solid currentColor; padding: 0 5px; border-radius: 2px; }
 .kick { font: inherit; font-size: .8rem; background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 2px; padding: 2px 8px; cursor: pointer; white-space: nowrap; }
 .kick:hover, .kick.armed { color: var(--crit); border-color: var(--crit); }
+.lead.co { color: var(--teal-hi); }
+.acts { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
 .leader-tools { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 10px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -602,7 +604,7 @@ function renderGroupList() {
     const name = g === null ? "Deleted group" : (g ? g.name : "Loading…");
     el.append(h("button", { type: "button", onclick: () => setActive(gid) },
       h("span", {}, name),
-      h("span", { class: "sz" }, g && g.ownerId === me ? "Leader" : "")));
+      h("span", { class: "sz" }, g && g.ownerId === me ? "Leader" : coLeadersOf(g).includes(me) ? "Co-leader" : "")));
   }
 }
 
@@ -652,9 +654,26 @@ async function updateGroup(patch, what) {
   try { await db.doc("groups/" + activeGid).update(patch); }
   catch (e) { showNotice(`Couldn't ${what}: ` + ((e && (e.message || e.code)) || "unknown error")); }
 }
+// The leader (ownerId) can do everything; co-leaders can rename and remove/re-admit players.
+function coLeadersOf(g) { return (g && g.coLeaders) || []; }
+function canManage(g) { return !!g && (g.ownerId === me || coLeadersOf(g).includes(me)); }
 function removeMember(uid) {
-  const removed = new Set(groups[activeGid].removed || []); removed.add(uid);
-  updateGroup({ removed: [...removed] }, "remove that player");
+  const g = groups[activeGid];
+  const removed = new Set(g.removed || []); removed.add(uid);
+  const patch = { removed: [...removed] };
+  // Only the leader can change co-leaders, so only the leader can remove one.
+  if (g.ownerId === me && coLeadersOf(g).includes(uid)) patch.coLeaders = coLeadersOf(g).filter(x => x !== uid);
+  updateGroup(patch, "remove that player");
+}
+function setCoLeader(uid, on) {
+  const co = new Set(coLeadersOf(groups[activeGid]));
+  if (on) co.add(uid); else co.delete(uid);
+  updateGroup({ coLeaders: [...co] }, on ? "make them a co-leader" : "remove them as co-leader");
+}
+// Handing over keeps the old leader on as a co-leader.
+function handOver(uid) {
+  const co = new Set(coLeadersOf(groups[activeGid])); co.delete(uid); co.add(me);
+  updateGroup({ ownerId: uid, coLeaders: [...co] }, "hand over leadership");
 }
 function restoreMember(uid) {
   updateGroup({ removed: (groups[activeGid].removed || []).filter(x => x !== uid) }, "let that player back in");
@@ -683,20 +702,23 @@ function renderHeader(g) {
   });
   const head = h("section", { class: "panel" },
     h("div", { class: "ghead" },
-      h("div", {}, h("div", { class: "label" }, isOwner ? "You lead this group" : "Group"), h("h2", {}, g.name)),
+      h("div", {}, h("div", { class: "label" }, isOwner ? "You lead this group" : canManage(g) ? "You co-lead this group" : "Group"), h("h2", {}, g.name)),
       h("div", { class: "row" }, h("span", { class: "label" }, "Join code"), codeEl, copyBtn)));
 
-  if (isOwner) {
+  if (canManage(g)) {
     const nameIn = h("input", { id: "editName", class: "grow", maxlength: "40", value: g.name, "aria-label": "Group name" });
     const rename = h("button", { class: "btn ghost", type: "button" }, "Rename");
     rename.addEventListener("click", () => { const v = nameIn.value.trim(); if (v && v !== g.name) updateGroup({ name: v }, "rename the group"); });
-    const del = confirmButton("Delete group", "Click again to delete for everyone", "btn danger", async () => {
+    const del = isOwner ? confirmButton("Delete group", "Click again to delete for everyone", "btn danger", async () => {
       try { await db.doc("groups/" + activeGid).delete(); leaveGroup(activeGid); } catch (e) { showNotice("Couldn't delete: " + (e.message || e.code)); }
-    });
+    }) : null;
     head.append(h("div", { class: "leader-tools" },
-      h("div", { class: "label" }, "Leader controls · remove players from the Muster Roll below"),
+      h("div", { class: "label" }, isOwner
+        ? "Leader controls · remove players, add co-leaders or hand over leadership in the Muster Roll below"
+        : "Co-leader controls · remove players in the Muster Roll below"),
       h("div", { class: "row" }, nameIn, rename, del)));
-  } else {
+  }
+  if (!isOwner) {
     head.append(h("div", { class: "row" }, confirmButton("Leave group", "Click again to leave", "btn ghost", () => leaveGroup(activeGid))));
   }
   return head;
@@ -951,10 +973,10 @@ async function renderAnalysis() {
     const p = ps[r.id] || {};
     return { ...r, name: (r.nick || p.name || "Unnamed adventurer") + (r.id === me ? " (you)" : ""), avatar: p.avatarUrl };
   }).sort((a, b) => a.name.localeCompare(b.name));
-  const isLeader = g.ownerId === me;
+  const manager = canManage(g);
   host.replaceChildren(...renderAnalysisPanels(named.filter(m => !removed.has(m.id)), {
-    ownerId: g.ownerId, isLeader,
-    removed: isLeader ? named.filter(m => removed.has(m.id)) : [],
+    ownerId: g.ownerId, coLeaders: coLeadersOf(g), isLeader: manager, isOwner: g.ownerId === me,
+    removed: manager ? named.filter(m => removed.has(m.id)) : [],
   }));
 }
 
@@ -1066,7 +1088,8 @@ function renderAnalysisPanels(members, ctx = {}) {
         const others = e.wants.filter(t => t !== e.main);
         const row = h("tr", {},
           h("td", {}, h("span", { class: "who" }, m.avatar ? h("img", { src: m.avatar, alt: "" }) : null, m.name,
-            m.id === ctx.ownerId ? h("span", { class: "lead" }, "Leader") : null)),
+            m.id === ctx.ownerId ? h("span", { class: "lead" }, "Leader")
+              : (ctx.coLeaders || []).includes(m.id) ? h("span", { class: "lead co" }, "Co-leader") : null)),
           h("td", {}, h("span", { class: "fchip " + (f || "none") }, f === "horde" ? "Horde" : f === "alliance" ? "Alliance" : "Undecided"),
             e.ruleset ? h("div", { class: "muted", style: "font-size:.8rem;margin-top:3px" }, RULESET_NAME[e.ruleset]) : null),
           h("td", {}, e.races.length ? h("div", { class: "chips" }, e.races.map(r => h("span", { class: "rname " + RACE[r].faction }, RACE[r].name))) : h("span", { class: "muted" }, "Any")),
@@ -1074,7 +1097,18 @@ function renderAnalysisPanels(members, ctx = {}) {
           h("td", {}, m.role ? h("span", { class: "chip role-" + m.role, html: ICON[m.role] }, ROLE_ONE[m.role], m.auto ? h("span", { class: "muted" }, " (flex)") : null) : h("span", { class: "muted" }, "–")),
           h("td", {}, others.length ? h("div", { class: "chips" }, others.map(tokenChip)) : h("span", { class: "muted" }, "–")),
           h("td", {}, e.profs.length ? e.profs.map(p => PROF[p].name).join(", ") : h("span", { class: "muted" }, "–")));
-        if (ctx.isLeader) row.append(h("td", {}, m.id === me ? null : confirmButton("Remove", "Confirm remove", "kick", () => removeMember(m.id))));
+        if (ctx.isLeader) {
+          const isCo = (ctx.coLeaders || []).includes(m.id);
+          const acts = h("div", { class: "acts" });
+          // Co-leaders can't remove the leader or each other; the leader can remove anyone but themself.
+          const canRemove = m.id !== me && m.id !== ctx.ownerId && (ctx.isOwner || !isCo);
+          if (ctx.isOwner && m.id !== me) {
+            acts.append(h("button", { class: "kick", type: "button", onclick: () => setCoLeader(m.id, !isCo) }, isCo ? "Remove co-leader" : "Make co-leader"));
+            acts.append(confirmButton("Hand over lead", "Confirm hand over", "kick", () => handOver(m.id)));
+          }
+          if (canRemove) acts.append(confirmButton("Remove", "Confirm remove", "kick", () => removeMember(m.id)));
+          row.append(h("td", {}, acts));
+        }
         return row;
       }))))
       : h("p", { class: "muted", style: "margin:0" }, "Nobody here yet. Share the join code."));
