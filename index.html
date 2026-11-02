@@ -854,6 +854,13 @@ function analyse(members) {
     const parts = [dpsMix.melee && `${dpsMix.melee} melee`, dpsMix.ranged && `${dpsMix.ranged} ranged`, dpsMix.either && `${dpsMix.either} either`].filter(Boolean);
     issues.push(["info", `DPS mix: ${parts.join(", ")}.`]);
   }
+  // Flag top choices that none of the player's picked races can actually play.
+  for (const m of members) {
+    const e = m.entry, cls = e.main && e.main !== "any" ? tokenClass(e.main) : null;
+    if (!cls || !e.races.length) continue;
+    const problems = e.races.map(r => raceClassProblem(r, cls, e.faction));
+    if (problems.every(Boolean)) issues.push(["warn", `${m.name}: ${problems[0]}`]);
+  }
   if (floaters.length) issues.push(["info", `${listNames(floaters.map(m => m.name))} ${floaters.length === 1 ? "is" : "are"} flexible, so counted where the group needs them most.`]);
   if (unpicked.length) issues.push(["info", `Still to pick a class: ${listNames(unpicked)}.`]);
   let verdict;
