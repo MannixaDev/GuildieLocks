@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Groups are looked up by their 6-character join code. Nobody can list
+    // every group, so a code works as the invite.
+    match /groups/{gid} {
+      allow get: if request.auth != null;
+      allow create: if request.auth != null
+        && gid.matches('^[A-Z0-9]{6}$')
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.size in [5, 10, 20, 25, 40];
+      allow update: if request.auth != null
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.size in [5, 10, 20, 25, 40];
+      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+    }
+
+    // One document per player: nickname, the groups they're in, and their
+    // faction vote and class picks for each. Only the player can change it.
+    match /members/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.groupIds is list
+        && request.resource.data.groupIds.size() <= 20
+        && request.resource.data.nick is string
+        && request.resource.data.nick.size() <= 24;
+    }
+  }
+}

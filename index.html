@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GuildieLocks · WoW Forever Roster Planner</title>
+<meta name="description" content="Plan your World of Warcraft: Forever group: vote Horde or Alliance, pick classes, and check your tanks and healers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700;900&family=Alegreya+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a war-table board. Left rail lists your groups; the main board shows one group's vote, comp check and roster. */
+/* One committed look: a torch-lit stone hall. Gilded frames on dark leather panels,
+   parchment text, item-quality colours for verdicts, faction banners for the vote. */
+:root {
+  --bg: #0b0907;
+  --panel: #1a140e;
+  --panel-2: #2a2016;
+  --line: #5a4424;
+  --gold: #e8b64c;
+  --gold-hi: #ffe39a;
+  --gold-lo: #8a6020;
+  --fg: #eadfc4;
+  --muted: #ab9a78;
+  --accent: #e8b64c;
+  --accent-ink: #1a1006;
+  --horde: #b3241a;
+  --horde-hi: #ff5a3c;
+  --alliance: #1c4fa8;
+  --alliance-hi: #5fa4ff;
+  --tank: #6fb7d8;
+  --heal: #62d36b;
+  --dps: #e07a5f;
+  --q-poor: #9d9d9d;
+  --q-uncommon: #1eff00;
+  --q-rare: #0070dd;
+  --q-epic: #a335ee;
+  --q-legendary: #ff8000;
+  --good: #1eff00;
+  --warn: #ff8000;
+  --crit: #ff3b30;
+  --good-bg: rgba(30, 255, 0, .07);
+  --warn-bg: rgba(255, 128, 0, .09);
+  --crit-bg: rgba(255, 59, 48, .1);
+  --font-display: "Cinzel", "Trajan Pro", "Palatino Linotype", Georgia, serif;
+  --font-title: "Cinzel Decorative", "Cinzel", Georgia, serif;
+  --font-body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --r: 4px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 400; text-wrap: balance; margin: 0; }
+h1 { font-size: 1.9rem; letter-spacing: .02em; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.05rem; letter-spacing: .03em; }
+.label { font-size: .75rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 700; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 20px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+header.top p { margin: 0; color: var(--muted); max-width: 60ch; }
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.rail { display: grid; gap: 16px; }
+.grouplist { display: grid; gap: 4px; }
+.grouplist button { text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; background: transparent; border: 1px solid transparent; border-radius: var(--r); padding: 8px 10px; color: var(--fg); font: inherit; cursor: pointer; }
+.grouplist button:hover { background: var(--panel-2); }
+.grouplist button[aria-current="true"] { background: var(--panel-2); border-color: var(--accent); }
+.grouplist .sz { font-family: var(--font-mono); font-size: .8rem; color: var(--muted); }
+
+form.stack { display: grid; gap: 8px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row > * { min-width: 0; }
+input, select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r); padding: 7px 9px; min-width: 0; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn { font: inherit; font-weight: 700; border-radius: var(--r); padding: 7px 14px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--fg); border-color: var(--line); }
+.btn.ghost:hover { border-color: var(--accent); }
+.btn.danger { background: transparent; color: var(--crit); border-color: var(--crit); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.grow { flex: 1 1 140px; }
+
+.board { display: grid; gap: 16px; min-width: 0; }
+.ghead { display: flex; flex-wrap: wrap; gap: 10px 20px; justify-content: space-between; align-items: flex-end; }
+.code { font-family: var(--font-mono); letter-spacing: .15em; background: var(--panel-2); padding: 3px 8px; border-radius: 4px; user-select: all; }
+.banner { border: 1px dashed var(--accent); border-radius: var(--r); padding: 12px 14px; background: var(--panel); }
+.notice { padding: 10px 12px; border-radius: var(--r); background: var(--warn-bg); color: var(--fg); border-left: 3px solid var(--warn); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+
+/* faction vote */
+.fbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fbtn { font: inherit; font-family: var(--font-display); font-size: 1.1rem; padding: 12px; border-radius: var(--r); border: 2px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+.fbtn.horde[aria-pressed="true"] { border-color: var(--horde); background: var(--horde); color: #fff; }
+.fbtn.alliance[aria-pressed="true"] { border-color: var(--alliance); background: var(--alliance); color: #fff; }
+.fbtn.horde:hover { border-color: var(--horde); }
+.fbtn.alliance:hover { border-color: var(--alliance); }
+.tally { display: flex; height: 26px; border-radius: 4px; overflow: hidden; background: var(--panel-2); }
+.tally > div { display: flex; align-items: center; justify-content: center; color: #fff; font-family: var(--font-mono); font-size: .85rem; min-width: 0; transition: flex-grow .3s; }
+.tally .h { background: var(--horde); }
+.tally .a { background: var(--alliance); }
+.tally .u { background: transparent; color: var(--muted); }
+.legend { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .9rem; }
+
+/* picks */
+.pick { display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: center; }
+.pick .n { font-family: var(--font-mono); color: var(--muted); font-size: .8rem; }
+.pick select { width: 100%; }
+
+/* comp check */
+.verdict { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-weight: 700; font-size: .85rem; }
+.verdict.good { background: var(--good-bg); color: var(--good); }
+.verdict.warn { background: var(--warn-bg); color: var(--warn); }
+.verdict.crit { background: var(--crit-bg); color: var(--crit); }
+.meters { display: grid; gap: 12px; }
+.meter { display: grid; grid-template-columns: 92px minmax(0, 1fr) 70px; gap: 10px; align-items: center; }
+.meter .name { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.meter .count { text-align: right; font-family: var(--font-mono); font-size: .9rem; }
+.slots { display: flex; flex-wrap: wrap; gap: 3px; }
+.slot { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid var(--line); }
+.slot.on { border-color: transparent; }
+.slot.over { background: repeating-linear-gradient(45deg, var(--crit) 0 2px, transparent 2px 5px); border-color: var(--crit); }
+.role-tank { color: var(--tank); } .role-heal { color: var(--heal); } .role-dps { color: var(--dps); }
+.bg-tank { background: var(--tank); } .bg-heal { background: var(--heal); } .bg-dps { background: var(--dps); }
+.issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.issues li { padding: 8px 10px; border-radius: var(--r); border-left: 3px solid; font-size: .95rem; }
+.issues li.crit { background: var(--crit-bg); border-color: var(--crit); }
+.issues li.warn { background: var(--warn-bg); border-color: var(--warn); }
+.issues li.good { background: var(--good-bg); border-color: var(--good); }
+.issues li.info { background: var(--panel-2); border-color: var(--muted); }
+svg.ri { width: 16px; height: 16px; flex: none; fill: currentColor; }
+
+/* class spread */
+.spread { display: grid; gap: 5px; }
+.spread .bar { display: grid; grid-template-columns: 80px minmax(0, 1fr) 24px; gap: 8px; align-items: center; font-size: .9rem; }
+.spread .track { height: 10px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.spread .fill { height: 100%; border-radius: 3px; }
+.spread .v { font-family: var(--font-mono); text-align: right; font-size: .85rem; }
+
+/* roster */
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: .95rem; }
+th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+.chip { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px var(--line); }
+.fchip { font-size: .8rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.fchip.horde { background: var(--horde); color: #fff; }
+.fchip.alliance { background: var(--alliance); color: #fff; }
+.fchip.none { background: var(--panel-2); color: var(--muted); }
+.who { display: flex; align-items: center; gap: 8px; }
+.who img { width: 24px; height: 24px; border-radius: 50%; }
+.status { font-size: .85rem; color: var(--muted); min-height: 1.2em; }
+footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 12px; }
+/* ---- Azeroth theme layer ---- */
+body {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232, 182, 76, .16), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 0% 100%, rgba(179, 36, 26, .12), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(28, 79, 168, .14), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 2px, transparent 2px 6px),
+    var(--bg);
+  background-attachment: fixed;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; color: var(--gold); text-shadow: 0 1px 0 #000, 0 0 14px rgba(232, 182, 76, .25); }
+h3 { font-size: 1.05rem; letter-spacing: .06em; }
+h2 { font-size: 1.45rem; }
+
+header.top { flex-direction: column; align-items: center; text-align: center; border-bottom: none; padding-bottom: 6px; gap: 6px; }
+header.top p { margin: 0 auto; }
+.crest { width: 64px; height: 64px; filter: drop-shadow(0 0 10px rgba(232, 182, 76, .35)); }
+h1.title {
+  font-family: var(--font-title); font-weight: 900; font-size: clamp(2rem, 6vw, 3.4rem); letter-spacing: .03em; line-height: 1.05;
+  background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 45%, var(--gold-lo) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: none; filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 18px rgba(232, 182, 76, .3));
+}
+.subtitle { font-family: var(--font-display); letter-spacing: .25em; text-transform: uppercase; font-size: .8rem; color: var(--muted); }
+.divider { height: 14px; width: min(520px, 100%); margin: 4px auto 0;
+  background:
+    linear-gradient(90deg, transparent, var(--gold-lo) 20%, var(--gold) 50%, var(--gold-lo) 80%, transparent) center / 100% 1px no-repeat,
+    radial-gradient(circle, var(--gold) 0 3px, transparent 4px) center / 14px 14px no-repeat; }
+
+.panel {
+  background: linear-gradient(180deg, rgba(255, 220, 150, .05), transparent 40%), var(--panel);
+  border: 1px solid var(--gold-lo);
+  border-radius: var(--r);
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px rgba(255, 220, 150, .08), inset 0 0 30px rgba(0, 0, 0, .6), 0 8px 24px rgba(0, 0, 0, .55);
+  position: relative;
+}
+.panel::before, .panel::after {
+  content: ""; position: absolute; width: 10px; height: 10px; border: 2px solid var(--gold); pointer-events: none;
+}
+.panel::before { top: -3px; left: -3px; border-right: none; border-bottom: none; }
+.panel::after { bottom: -3px; right: -3px; border-left: none; border-top: none; }
+
+.label { color: var(--muted); font-family: var(--font-display); letter-spacing: .12em; }
+input, select { background: #0e0b08; border-color: var(--line); color: var(--fg); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .7); }
+input:focus-visible, select:focus-visible { outline: none; border-color: var(--gold); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .7), 0 0 0 1px var(--gold), 0 0 12px rgba(232, 182, 76, .4); }
+button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+
+.btn {
+  font-family: var(--font-display); letter-spacing: .06em; color: var(--gold-hi);
+  background: linear-gradient(180deg, #a3271a 0%, #6e140b 55%, #4a0b05 100%);
+  border: 1px solid var(--gold);
+  box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255, 200, 150, .35), 0 3px 8px rgba(0, 0, 0, .6);
+  text-shadow: 0 1px 0 #000;
+}
+.btn:hover:not(:disabled) { background: linear-gradient(180deg, #c33222 0%, #8a1a0e 55%, #5a0e07 100%); color: #fff3cc; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn.ghost { background: linear-gradient(180deg, #2b2116, #17110b); color: var(--gold); border-color: var(--gold-lo); }
+.btn.ghost:hover { border-color: var(--gold); color: var(--gold-hi); }
+.btn.danger { background: transparent; color: var(--crit); border-color: var(--crit); box-shadow: none; }
+
+.grouplist button { font-family: var(--font-display); color: var(--fg); }
+.grouplist button:hover { background: var(--panel-2); color: var(--gold-hi); }
+.grouplist button[aria-current="true"] { background: linear-gradient(90deg, rgba(232, 182, 76, .18), transparent); border-color: var(--gold-lo); color: var(--gold-hi); }
+.code { background: #0e0b08; border: 1px solid var(--gold-lo); color: var(--gold-hi); }
+.banner { border: 1px solid var(--gold-lo); background: linear-gradient(180deg, rgba(232, 182, 76, .08), transparent), var(--panel); box-shadow: inset 0 0 30px rgba(0,0,0,.6); }
+.notice { background: var(--warn-bg); border-left-color: var(--warn); }
+
+/* Faction banners */
+.fbtns { gap: 12px; }
+.fbtn {
+  display: grid; justify-items: center; gap: 6px; padding: 14px 10px 18px;
+  font-family: var(--font-display); font-weight: 900; letter-spacing: .12em; text-transform: uppercase; font-size: 1.05rem;
+  color: var(--muted); background: #120e0a; border: 1px solid var(--line);
+  clip-path: polygon(0 0, 100% 0, 100% 86%, 50% 100%, 0 86%);
+  transition: transform .15s, filter .15s, color .15s;
+}
+.fbtn svg { width: 34px; height: 34px; fill: currentColor; }
+.fbtn.horde:hover { color: var(--horde-hi); border-color: var(--horde); }
+.fbtn.alliance:hover { color: var(--alliance-hi); border-color: var(--alliance); }
+.fbtn.horde[aria-pressed="true"] { color: #ffe0c8; background: linear-gradient(180deg, #c22c1f, #5c0d07); border-color: var(--horde-hi); filter: drop-shadow(0 0 12px rgba(255, 90, 60, .55)); transform: translateY(-2px); }
+.fbtn.alliance[aria-pressed="true"] { color: #e2efff; background: linear-gradient(180deg, #2a64c8, #0d2758); border-color: var(--alliance-hi); filter: drop-shadow(0 0 12px rgba(95, 164, 255, .55)); transform: translateY(-2px); }
+.tally { height: 28px; border: 1px solid var(--gold-lo); background: #0e0b08; border-radius: 2px; }
+.tally .h { background: linear-gradient(180deg, #d0392a, #6e140b); }
+.tally .a { background: linear-gradient(180deg, #3577e0, #12306a); }
+
+/* Item-quality verdicts and quest-log issues */
+.verdict { border-radius: 2px; font-family: var(--font-display); letter-spacing: .06em; background: #0e0b08; border: 1px solid currentColor; }
+.verdict.good { background: #0e0b08; color: var(--q-uncommon); }
+.verdict.warn { background: #0e0b08; color: var(--q-legendary); }
+.verdict.crit { background: #0e0b08; color: var(--crit); }
+.issues li { border-radius: 2px; background: rgba(0,0,0,.25); color: var(--fg); }
+.issues li.info { background: rgba(0,0,0,.25); border-color: var(--q-poor); }
+.issues li::before { content: "\25C6"; margin-right: 8px; font-size: .75em; color: var(--gold); }
+.slot { border-color: var(--line); border-radius: 2px; background: #0e0b08; }
+.slot.on { box-shadow: 0 0 6px currentColor; }
+.slot.on.bg-tank { color: var(--tank); } .slot.on.bg-heal { color: var(--heal); } .slot.on.bg-dps { color: var(--dps); }
+.spread .track { background: #0e0b08; border: 1px solid var(--line); border-radius: 2px; height: 12px; }
+.spread .fill { border-radius: 0; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 0 rgba(0,0,0,.35) !important; }
+
+th { font-family: var(--font-display); color: var(--gold); border-bottom-color: var(--gold-lo); }
+td { border-bottom-color: rgba(90, 68, 36, .6); }
+tbody tr:hover td { background: rgba(232, 182, 76, .05); }
+.fchip { border-radius: 2px; font-family: var(--font-display); letter-spacing: .05em; }
+.fchip.horde { background: linear-gradient(180deg, #c22c1f, #6e140b); }
+.fchip.alliance { background: linear-gradient(180deg, #2a64c8, #12306a); }
+.fchip.none { background: #0e0b08; border: 1px solid var(--line); }
+.dot { box-shadow: 0 0 0 1px #000, 0 0 6px rgba(255,255,255,.15); }
+footer { border-top: 1px solid var(--gold-lo); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <svg class="crest" viewBox="0 0 64 64" aria-hidden="true">
+      <defs><linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe39a"/><stop offset=".5" stop-color="#e8b64c"/><stop offset="1" stop-color="#8a6020"/></linearGradient></defs>
+      <path d="M32 3 56 12v18c0 15-10 26-24 31C18 56 8 45 8 30V12z" fill="#1a140e" stroke="url(#gold)" stroke-width="3"/>
+      <path d="M20 44 44 20M44 44 20 20" stroke="url(#gold)" stroke-width="4" stroke-linecap="round"/>
+      <path d="M17 17h6v6h-6zM41 17h6v6h-6z" fill="url(#gold)"/>
+      <circle cx="32" cy="32" r="6" fill="#b3241a" stroke="url(#gold)" stroke-width="2"/>
+    </svg>
+    <div class="subtitle">World of Warcraft: Forever</div>
+    <h1 class="title">GuildieLocks</h1>
+    <div class="divider" aria-hidden="true"></div>
+    <p>Start a group, share its join code, and let everyone vote on a faction and list the classes they want to play. The board checks whether you have the tanks and healers you need.</p>
+  </header>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <div class="layout">
+    <aside class="rail">
+      <section class="panel">
+        <h3>Your groups</h3>
+        <div id="groupList" class="grouplist"><p class="muted" style="margin:0">Loading your groups…</p></div>
+      </section>
+      <section class="panel">
+        <h3>Start a group</h3>
+        <form id="createForm" class="stack">
+          <input id="newName" placeholder="Group name, e.g. Tuesday Raiders" maxlength="40" required>
+          <select id="newSize" aria-label="Group size">
+            <option value="5">5-player dungeon group</option>
+            <option value="10" selected>10-player raid</option>
+            <option value="20">20-player raid</option>
+            <option value="25">25-player raid</option>
+            <option value="40">40-player raid</option>
+          </select>
+          <button class="btn" type="submit" id="createBtn">Create group</button>
+        </form>
+      </section>
+      <section class="panel">
+        <h3>Join with a code</h3>
+        <form id="joinForm" class="stack">
+          <div class="row">
+            <input id="joinCode" class="grow mono" placeholder="6-letter code" maxlength="6" autocomplete="off" style="text-transform:uppercase">
+            <button class="btn" type="submit" id="joinBtn">Join</button>
+          </div>
+        </form>
+        <div id="joinStatus" class="status"></div>
+      </section>
+    </aside>
+
+    <main id="board" class="board"></main>
+  </div>
+
+  <footer>GuildieLocks is a fan-made planning tool. World of Warcraft is a trademark of Blizzard Entertainment, which does not endorse or sponsor this site. Class and spec lists follow the published Forever guides and may change after launch.</footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+// ---- Game data ------------------------------------------------------------
+const CLASSES = [
+  { id: "warrior", name: "Warrior", color: "#C69B6D", specs: [["Arms", "dps"], ["Fury", "dps"], ["Protection", "tank"]] },
+  { id: "paladin", name: "Paladin", color: "#F48CBA", specs: [["Holy", "heal"], ["Protection", "tank"], ["Retribution", "dps"]] },
+  { id: "hunter", name: "Hunter", color: "#AAD372", specs: [["Beast Mastery", "dps"], ["Marksmanship", "dps"], ["Survival", "dps"]] },
+  { id: "rogue", name: "Rogue", color: "#FFF468", specs: [["Assassination", "dps"], ["Combat", "dps"], ["Subtlety", "dps"]] },
+  { id: "priest", name: "Priest", color: "#F2F2F2", specs: [["Discipline", "heal"], ["Holy", "heal"], ["Shadow", "dps"]] },
+  { id: "shaman", name: "Shaman", color: "#0070DD", specs: [["Elemental", "dps"], ["Enhancement", "dps"], ["Restoration", "heal"]] },
+  { id: "mage", name: "Mage", color: "#3FC7EB", specs: [["Arcane", "dps"], ["Fire", "dps"], ["Frost", "dps"]] },
+  { id: "warlock", name: "Warlock", color: "#8788EE", specs: [["Affliction", "dps"], ["Demonology", "dps"], ["Destruction", "dps"]] },
+  { id: "druid", name: "Druid", color: "#FF7C0A", specs: [["Balance", "dps"], ["Feral (Cat)", "dps"], ["Feral (Bear)", "tank"], ["Restoration", "heal"]] },
+];
+const CLASS = Object.fromEntries(CLASSES.map(c => [c.id, c]));
+const SIZES = {
+  5:  { tank: 1, heal: 1, dps: 3,  label: "5-player dungeon" },
+  10: { tank: 2, heal: 3, dps: 5,  label: "10-player raid" },
+  20: { tank: 2, heal: 5, dps: 13, label: "20-player raid" },
+  25: { tank: 3, heal: 6, dps: 16, label: "25-player raid" },
+  40: { tank: 5, heal: 11, dps: 24, label: "40-player raid" },
+};
+const ROLE_NAME = { tank: "Tanks", heal: "Healers", dps: "DPS" };
+const ROLE_ONE = { tank: "tank", heal: "healer", dps: "DPS" };
+const ICON = {
+  tank: '<svg class="ri" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1 2 3.2v4.3C2 11.2 4.6 14 8 15c3.4-1 6-3.8 6-7.5V3.2z"/></svg>',
+  heal: '<svg class="ri" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1.5h4v4.5h4.5v4H10v4.5H6V10H1.5V6H6z"/></svg>',
+  dps:  '<svg class="ri" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.8 1 15 2.2 7.4 9.8l1.4 1.4-1.1 1.1-1.2-1.2-2.6 2.6.4 1.5-1.4.6L1 14l-.6-1.8 1.5-.6 1.5.4 2.6-2.6-1.2-1.2 1.1-1.1 1.4 1.4z"/></svg>',
+};
+
+// Original faction marks (not the official emblems): crossed axes and a lion-less kite shield.
+const FACTION_ICON = {
+  horde: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 4c4 0 7 2 8 5L27 25l-2 2L11 13c-3-1-5-4-5-9z"/><path d="M26 4c-4 0-7 2-8 5l-3 3 2 2 3-3c3-1 6-3 6-7z"/><path d="M5 27l7-7 2 2-7 7z"/></svg>',
+  alliance: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 28 6v9c0 7-5 12-12 15C9 27 4 22 4 15V6z"/><path d="M16 7l2 5h5l-4 3 2 5-5-3-5 3 2-5-4-3h5z" fill="#0b0907"/></svg>',
+};
+
+function roleOf(p) {
+  const c = CLASS[p && p.c]; if (!c) return null;
+  const s = c.specs.find(x => x[0] === p.s); return s ? s[1] : null;
+}
+function validPicks(entry) { return ((entry && entry.picks) || []).filter(p => roleOf(p)); }
+
+// ---- Small DOM helpers ------------------------------------------------------
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "html") el.innerHTML = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : String(kid));
+  return el;
+}
+const $ = id => document.getElementById(id);
+function listNames(arr) {
+  if (arr.length <= 1) return arr.join("");
+  return arr.slice(0, -1).join(", ") + " and " + arr[arr.length - 1];
+}
+function showNotice(msg) { const n = $("notice"); n.textContent = msg || ""; n.hidden = !msg; }
+
+// ---- State ------------------------------------------------------------------
+let db = null, user = null, me = null;
+let setupNeeded = false, connectError = "";
+let myData = null;            // members/<me>
+let readOnly = false;
+const groups = {};            // gid -> group doc data | null (deleted)
+const groupUnsubs = {};
+let activeGid = null;
+let activeMembers = [];       // [{id, data}]
+let membersUnsub = null;
+let saveTimer = null, saving = false, saveAgain = false;
+
+function emptyMine() { return { nick: "", groupIds: [], groups: {} }; }
+function myEntry(gid) {
+  if (!myData.groups[gid]) myData.groups[gid] = { faction: null, picks: [] };
+  return myData.groups[gid];
+}
+
+// ---- Saving my own doc (one write at a time, coalesced) ---------------------
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushSave, 350);
+  setSaveStatus("Saving…");
+}
+async function flushSave() {
+  saveTimer = null;
+  if (!db || !me || readOnly) return;
+  if (saving) { saveAgain = true; return; }
+  saving = true;
+  try {
+    await db.doc("members/" + me).set(JSON.parse(JSON.stringify(myData)));
+    setSaveStatus("Saved");
+  } catch (e) {
+    if (e && e.code === "permission-denied") {
+      readOnly = true;
+      showNotice("The database refused this save. Check that the Firestore rules from the README are published.");
+      setSaveStatus("Not saved");
+    } else if (e && e.code === "unavailable") {
+      setSaveStatus("Connection hiccup, retrying…");
+      setTimeout(scheduleSave, 1200 + Math.random() * 800);
+    } else {
+      setSaveStatus("Couldn't save: " + ((e && e.message) || "unknown error"));
+    }
+  }
+  saving = false;
+  if (saveAgain) { saveAgain = false; flushSave(); }
+}
+function setSaveStatus(t) { const s = $("saveStatus"); if (s) s.textContent = t; }
+function pendingLocal() { return saving || saveTimer !== null; }
+
+// ---- Group subscriptions ---------------------------------------------------
+function syncGroupSubs() {
+  const want = new Set(myData.groupIds);
+  for (const gid of Object.keys(groupUnsubs)) if (!want.has(gid)) { groupUnsubs[gid](); delete groupUnsubs[gid]; delete groups[gid]; }
+  for (const gid of want) {
+    if (groupUnsubs[gid]) continue;
+    groupUnsubs[gid] = db.doc("groups/" + gid).onSnapshot(snap => {
+      if (snap.metadata.fromCache && !snap.exists) return;
+      groups[gid] = snap.exists ? snap.data() : null;
+      renderGroupList();
+      if (gid === activeGid) renderBoard();
+    }, () => {});
+  }
+}
+function setActive(gid) {
+  if (gid === activeGid && membersUnsub) return;
+  activeGid = gid;
+  try { localStorage.setItem("frp.active", gid || ""); } catch (e) {}
+  if (membersUnsub) { membersUnsub(); membersUnsub = null; }
+  activeMembers = [];
+  if (gid) {
+    membersUnsub = db.collection("members").where("groupIds", "array-contains", gid).onSnapshot(snap => {
+      activeMembers = snap.docs.map(d => ({ id: d.id, data: d.data() }));
+      renderAnalysis();
+    }, () => {});
+  }
+  renderGroupList();
+  renderBoard();
+}
+
+// ---- Rendering: group list ---------------------------------------------------
+function renderGroupList() {
+  const el = $("groupList");
+  el.replaceChildren();
+  if (!db) { el.append(h("p", { class: "muted", style: "margin:0" }, setupNeeded ? "Groups appear here once the site is connected to its database." : "Can't reach the database right now.")); return; }
+  if (!myData) { el.append(h("p", { class: "muted", style: "margin:0" }, "Loading your groups…")); return; }
+  if (!myData.groupIds.length) { el.append(h("p", { class: "muted", style: "margin:0" }, "No groups yet. Start one or join with a code.")); return; }
+  for (const gid of myData.groupIds) {
+    const g = groups[gid];
+    const name = g === null ? "Deleted group" : (g ? g.name : "Loading…");
+    el.append(h("button", { type: "button", "aria-current": gid === activeGid ? "true" : "false", onclick: () => setActive(gid) },
+      h("span", {}, name), h("span", { class: "sz" }, g ? g.size : "")));
+  }
+}
+
+// ---- Rendering: board --------------------------------------------------------
+function renderBoard() {
+  const board = $("board");
+  board.replaceChildren();
+  if (!db) {
+    board.append(setupNeeded
+      ? h("div", { class: "banner" }, h("h2", {}, "Almost ready"),
+          h("p", {}, "This site needs a free Firebase project to store groups, votes and picks. Fill in firebase-config.js using the steps in the README, then reload."))
+      : h("div", { class: "banner" }, h("h2", {}, "Couldn't connect"),
+          h("p", {}, "The planner's database didn't answer" + (connectError ? ": " + connectError : ".") + " Check your connection and reload.")));
+    renderExample(board);
+    return;
+  }
+  if (!myData) { board.append(h("div", { class: "panel" }, h("p", { class: "muted", style: "margin:0" }, "Loading the war table…"))); return; }
+  if (!activeGid) {
+    board.append(h("div", { class: "banner" },
+      h("h2", {}, "Example group"),
+      h("p", { style: "margin:.4em 0 0" }, "This is a made-up group so you can see how the board works. Start a group or join one with a code to plan your own.")));
+    renderExample(board);
+    return;
+  }
+  const g = groups[activeGid];
+  if (g === undefined) { board.append(h("div", { class: "panel" }, h("p", { class: "muted", style: "margin:0" }, "Loading group…"))); return; }
+  if (g === null) {
+    board.append(h("div", { class: "panel" }, h("h2", {}, "This group was deleted"),
+      h("p", { style: "margin:0" }, "Its creator removed it. You can take it off your list."),
+      h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => leaveGroup(activeGid) }, "Remove from my list"))));
+    return;
+  }
+  board.append(renderHeader(g), renderEntry(activeGid), h("div", { id: "analysis", class: "board" }));
+  renderAnalysis();
+}
+
+function renderHeader(g) {
+  const isOwner = g.ownerId === me;
+  const copyBtn = h("button", { class: "btn ghost", type: "button" }, "Copy code");
+  const codeEl = h("span", { class: "code" }, activeGid);
+  copyBtn.addEventListener("click", () => {
+    const text = `Join my WoW Forever group "${g.name}" with code ${activeGid}: ${location.href.split("#")[0]}#${activeGid}`;
+    const done = () => { copyBtn.textContent = "Copied"; setTimeout(() => copyBtn.textContent = "Copy code", 1500); };
+    try {
+      navigator.clipboard.writeText(text).then(done, () => selectText(codeEl));
+    } catch (e) { selectText(codeEl); }
+  });
+  const head = h("section", { class: "panel" },
+    h("div", { class: "ghead" },
+      h("div", {}, h("div", { class: "label" }, (SIZES[g.size] || SIZES[10]).label), h("h2", {}, g.name)),
+      h("div", { class: "row" }, h("span", { class: "label" }, "Join code"), codeEl, copyBtn)));
+
+  const tools = h("div", { class: "row" });
+  if (isOwner) {
+    const sizeSel = h("select", { id: "editSize", "aria-label": "Change group size" },
+      Object.entries(SIZES).map(([k, v]) => h("option", { value: k, selected: String(g.size) === k }, v.label)));
+    sizeSel.addEventListener("change", async () => {
+      try { await db.doc("groups/" + activeGid).update({ size: Number(sizeSel.value) }); } catch (e) { showNotice("Couldn't change the size: " + (e.message || e.code)); }
+    });
+    const del = h("button", { class: "btn danger", type: "button" }, "Delete group");
+    let armed = false;
+    del.addEventListener("click", async () => {
+      if (!armed) { armed = true; del.textContent = "Click again to delete for everyone"; setTimeout(() => { armed = false; del.textContent = "Delete group"; }, 4000); return; }
+      try { await db.doc("groups/" + activeGid).delete(); leaveGroup(activeGid); } catch (e) { showNotice("Couldn't delete: " + (e.message || e.code)); }
+    });
+    tools.append(h("span", { class: "label" }, "Size"), sizeSel, del);
+  } else {
+    tools.append(h("button", { class: "btn ghost", type: "button", onclick: () => leaveGroup(activeGid) }, "Leave group"));
+  }
+  head.append(tools);
+  return head;
+}
+function selectText(el) {
+  const r = document.createRange(); r.selectNodeContents(el);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+
+// "Your entry" is rendered once per group switch so typing never loses focus.
+function renderEntry(gid) {
+  const entry = myEntry(gid);
+  const nick = h("input", { id: "nick", class: "grow", placeholder: "Character or nickname", maxlength: "24", value: myData.nick || "" });
+  nick.addEventListener("input", () => { myData.nick = nick.value.trim(); scheduleSave(); renderAnalysis(); });
+
+  const fb = side => {
+    const b = h("button", { type: "button", class: "fbtn " + side, "aria-pressed": entry.faction === side ? "true" : "false", html: FACTION_ICON[side] }, side === "horde" ? "Horde" : "Alliance");
+    b.addEventListener("click", () => {
+      entry.faction = entry.faction === side ? null : side;
+      wrap.querySelectorAll(".fbtn").forEach(x => x.setAttribute("aria-pressed", x.classList.contains(entry.faction) ? "true" : "false"));
+      scheduleSave(); renderAnalysis();
+    });
+    return b;
+  };
+
+  const picksBox = h("div", { style: "display:grid;gap:8px" });
+  const ranks = ["1st", "2nd", "3rd"];
+  for (let i = 0; i < 3; i++) {
+    const cur = entry.picks[i] || {};
+    const cls = h("select", { id: "pickC" + i, "aria-label": ranks[i] + " choice class" },
+      h("option", { value: "" }, i === 0 ? "Pick a class" : "Backup class (optional)"),
+      CLASSES.map(c => h("option", { value: c.id, selected: cur.c === c.id }, c.name)));
+    const spec = h("select", { id: "pickS" + i, "aria-label": ranks[i] + " choice spec" });
+    const fillSpecs = () => {
+      spec.replaceChildren();
+      const c = CLASS[cls.value];
+      if (!c) { spec.append(h("option", { value: "" }, "Spec")); spec.disabled = true; return; }
+      spec.disabled = false;
+      for (const [s, r] of c.specs) spec.append(h("option", { value: s, selected: (entry.picks[i] || {}).s === s }, `${s} · ${ROLE_ONE[r]}`));
+    };
+    const commit = () => {
+      const picks = [];
+      for (let j = 0; j < 3; j++) {
+        const c = $("pickC" + j) ? $("pickC" + j).value : "", s = $("pickS" + j) ? $("pickS" + j).value : "";
+        picks[j] = c && s ? { c, s } : null;
+      }
+      entry.picks = picks.filter(Boolean);
+      scheduleSave(); renderAnalysis();
+    };
+    cls.addEventListener("change", () => { fillSpecs(); commit(); });
+    spec.addEventListener("change", commit);
+    fillSpecs();
+    picksBox.append(h("div", { class: "pick" }, h("span", { class: "n" }, ranks[i]), cls, spec));
+  }
+
+  const wrap = h("section", { class: "panel" },
+    h("div", { class: "ghead" }, h("h3", {}, "Your Character"), h("div", { id: "saveStatus", class: "status" }, readOnly ? "Read only" : "")),
+    h("div", { class: "row" }, h("label", { class: "label", for: "nick" }, "Name"), nick),
+    h("div", { class: "label" }, "Choose your allegiance"),
+    h("div", { class: "fbtns" }, fb("horde"), fb("alliance")),
+    h("div", { class: "label" }, "Classes you'd play, in order of preference"),
+    picksBox,
+    h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, "Your 1st choice counts toward the group's comp. Backups show who could switch roles if the group is short."));
+  if (readOnly) wrap.querySelectorAll("input,select,button").forEach(x => x.disabled = true);
+  return wrap;
+}
+
+// ---- Analysis ----------------------------------------------------------------
+function analyse(size, members) {
+  const t = SIZES[size] || SIZES[10];
+  const counts = { tank: 0, heal: 0, dps: 0 };
+  const flex = { tank: [], heal: [], dps: [] };
+  const byRole = { tank: [], heal: [], dps: [] };
+  const classCount = {};
+  const unpicked = [];
+  let horde = 0, alliance = 0, undecided = 0;
+  for (const m of members) {
+    if (m.entry.faction === "horde") horde++; else if (m.entry.faction === "alliance") alliance++; else undecided++;
+    const picks = validPicks(m.entry);
+    if (!picks.length) { unpicked.push(m.name); continue; }
+    const mainRole = roleOf(picks[0]);
+    counts[mainRole]++; byRole[mainRole].push(m.name);
+    classCount[picks[0].c] = (classCount[picks[0].c] || 0) + 1;
+    for (const p of picks.slice(1)) { const r = roleOf(p); if (r !== mainRole && !flex[r].includes(m.name)) flex[r].push(m.name); }
+  }
+  const picked = counts.tank + counts.heal + counts.dps;
+  const issues = [];
+  for (const r of ["tank", "heal"]) {
+    const diff = counts[r] - t[r];
+    if (diff < 0) {
+      const sev = counts[r] === 0 ? "crit" : "warn";
+      let msg = `Not enough ${ROLE_NAME[r].toLowerCase()}: ${counts[r]} of ${t[r]}.`;
+      msg += flex[r].length ? ` ${listNames(flex[r])} listed ${ROLE_ONE[r]} as a backup.` : ` Nobody has listed ${ROLE_ONE[r]} as a backup yet.`;
+      issues.push([sev, msg]);
+    } else if (diff > 0) {
+      const swap = byRole[r].filter(n => flex.dps.includes(n) || (r === "heal" ? flex.tank : flex.heal).includes(n));
+      let msg = `Too many ${ROLE_NAME[r].toLowerCase()}: ${counts[r]} for ${t[r]} slots.`;
+      if (swap.length) msg += ` ${listNames(swap)} could switch to a backup.`;
+      issues.push(["warn", msg]);
+    }
+  }
+  if (counts.dps > t.dps) issues.push(["warn", `More DPS than slots: ${counts.dps} for ${t.dps}. Some DPS will sit out or need to switch roles.`]);
+  else if (picked >= size && counts.dps < t.dps) issues.push(["warn", `Light on DPS: ${counts.dps} of ${t.dps}.`]);
+  if (picked > size) issues.push(["info", `${picked} players for ${size} spots. Plan a bench rotation or a second group.`]);
+  else if (picked < size) issues.push(["info", `${size - picked} of ${size} spots still open.`]);
+  const stackLimit = Math.max(2, Math.ceil(size * 0.25));
+  for (const [cid, n] of Object.entries(classCount)) if (n > stackLimit) issues.push(["warn", `Heavy on ${CLASS[cid].name}: ${n} players. Expect to compete for the same gear.`]);
+  if (size >= 10 && picked >= Math.min(size, 6)) {
+    const missing = CLASSES.filter(c => !classCount[c.id]).map(c => c.name);
+    if (missing.length && missing.length < CLASSES.length) issues.push(["info", `No ${listNames(missing)} as a main yet.`]);
+  }
+  if (unpicked.length) issues.push(["info", `Still to pick a class: ${listNames(unpicked)}.`]);
+  const roleOk = counts.tank === t.tank && counts.heal >= t.heal && counts.heal <= t.heal + (size >= 20 ? 1 : 0);
+  let verdict;
+  if (picked === 0) verdict = ["warn", "No picks yet"];
+  else if (issues.some(i => i[0] === "crit")) verdict = ["crit", "Missing a role"];
+  else if (roleOk && !issues.some(i => i[0] === "warn")) verdict = ["good", picked >= size ? "Balanced" : "On track"];
+  else verdict = ["warn", "Needs attention"];
+  if (verdict[0] === "good") issues.unshift(["good", "Tank and healer counts match the group size."]);
+  return { t, counts, classCount, issues, verdict, horde, alliance, undecided, picked };
+}
+
+let renderToken = 0;
+async function renderAnalysis() {
+  const host = $("analysis");
+  if (!host || !activeGid || !groups[activeGid]) return;
+  const tok = ++renderToken;
+  // Merge my local state over the snapshot so my own edits show instantly.
+  const rows = activeMembers.filter(m => m.id !== me).map(m => ({ id: m.id, nick: m.data.nick, entry: (m.data.groups || {})[activeGid] || {} }));
+  if (myData.groupIds.includes(activeGid)) rows.push({ id: me, nick: myData.nick, entry: myEntry(activeGid) });
+  const ps = user ? await user.profiles(rows.map(r => r.id)) : {};
+  if (tok !== renderToken) return;
+  const members = rows.map(r => {
+    const p = ps[r.id] || {};
+    return { ...r, name: (r.nick || p.name || "Someone") + (r.id === me ? " (you)" : ""), avatar: p.avatarUrl };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+  host.replaceChildren(...renderAnalysisPanels(groups[activeGid].size, members));
+}
+
+function renderExample(board) {
+  const ex = [
+    ["Brakka", "horde", [["warrior", "Protection"], ["warrior", "Fury"]]],
+    ["Selwyn", "alliance", [["priest", "Holy"], ["priest", "Shadow"]]],
+    ["Torvek", "horde", [["shaman", "Restoration"], ["shaman", "Enhancement"]]],
+    ["Ilsa", "horde", [["mage", "Frost"]]],
+    ["Doran", "alliance", [["rogue", "Combat"], ["druid", "Feral (Bear)"]]],
+    ["Mirelle", "horde", [["warlock", "Affliction"], ["priest", "Holy"]]],
+    ["Kast", null, [["mage", "Fire"]]],
+    ["Venna", "horde", [["hunter", "Marksmanship"]]],
+    ["Orrin", "alliance", [["paladin", "Retribution"], ["paladin", "Holy"]]],
+  ].map(([name, faction, picks]) => ({ id: name, name: "Example: " + name, entry: { faction, picks: picks.map(([c, s]) => ({ c, s })) } }));
+  board.append(h("div", { class: "board", style: "opacity:.92" }, ...renderAnalysisPanels(10, ex)));
+}
+
+function renderAnalysisPanels(size, members) {
+  const a = analyse(size, members);
+  const total = members.length;
+
+  // Faction vote
+  const lead = a.horde === a.alliance ? (a.horde ? "Tied" : "No votes yet") : (a.horde > a.alliance ? `Horde leads ${a.horde}–${a.alliance}` : `Alliance leads ${a.alliance}–${a.horde}`);
+  const seg = (cls, n, label) => h("div", { class: cls, style: `flex-grow:${n};flex-basis:0`, title: `${label}: ${n}` }, n ? String(n) : "");
+  const faction = h("section", { class: "panel" },
+    h("div", { class: "ghead" }, h("h3", {}, "Faction vote"), h("span", { class: "label" }, lead)),
+    h("div", { class: "tally", role: "img", "aria-label": `Horde ${a.horde}, Alliance ${a.alliance}, undecided ${a.undecided}` },
+      seg("h", a.horde, "Horde"), seg("u", a.undecided || (total ? 0 : 1), "Undecided"), seg("a", a.alliance, "Alliance")),
+    h("div", { class: "legend" },
+      h("span", { style: "color:var(--horde);font-weight:700" }, `Horde ${a.horde}`),
+      h("span", { class: "muted" }, `${a.undecided} undecided`),
+      h("span", { style: "color:var(--alliance);font-weight:700" }, `Alliance ${a.alliance}`)));
+
+  // Composition
+  const meters = h("div", { class: "meters" });
+  for (const r of ["tank", "heal", "dps"]) {
+    const n = a.counts[r], need = a.t[r];
+    const slots = h("div", { class: "slots", "aria-hidden": "true" });
+    for (let i = 0; i < Math.max(n, need); i++) slots.append(h("span", { class: "slot" + (i < Math.min(n, need) ? " on bg-" + r : "") + (i >= need ? " over" : "") }));
+    meters.append(h("div", { class: "meter" },
+      h("span", { class: "name role-" + r, html: ICON[r] }, ),
+      slots,
+      h("span", { class: "count" }, `${n} / ${need}`)));
+    meters.lastChild.firstChild.append(ROLE_NAME[r]);
+  }
+  const comp = h("section", { class: "panel" },
+    h("div", { class: "ghead" }, h("h3", {}, "Raid Composition"), h("span", { class: "verdict " + a.verdict[0] }, a.verdict[1])),
+    h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, `Target for a ${a.t.label}: ${a.t.tank} tanks, ${a.t.heal} healers, ${a.t.dps} DPS. Counts use each player's 1st choice.`),
+    meters,
+    h("ul", { class: "issues" }, a.issues.map(([sev, msg]) => h("li", { class: sev }, msg))));
+
+  // Class spread
+  const max = Math.max(1, ...Object.values(a.classCount));
+  const spread = h("section", { class: "panel" }, h("h3", {}, "Class spread"),
+    h("div", { class: "spread" }, CLASSES.map(c => {
+      const n = a.classCount[c.id] || 0;
+      return h("div", { class: "bar" }, h("span", {}, c.name),
+        h("div", { class: "track" }, h("div", { class: "fill", style: `width:${(n / max) * 100}%;background:${c.color};box-shadow:inset 0 0 0 1px var(--line)` })),
+        h("span", { class: "v" }, n));
+    })));
+
+  // Roster
+  const pickCell = p => {
+    if (!p || !roleOf(p)) return h("td", { class: "muted" }, "–");
+    const r = roleOf(p);
+    return h("td", {}, h("span", { class: "chip" },
+      h("span", { class: "dot", style: `background:${CLASS[p.c].color}` }),
+      `${p.s} ${CLASS[p.c].name}`,
+      h("span", { class: "role-" + r, title: ROLE_ONE[r], html: ICON[r] })));
+  };
+  const roster = h("section", { class: "panel" },
+    h("div", { class: "ghead" }, h("h3", {}, "Muster Roll"), h("span", { class: "label" }, `${total} ${total === 1 ? "member" : "members"}`)),
+    total ? h("div", { class: "tablewrap" }, h("table", {},
+      h("thead", {}, h("tr", {}, ["Player", "Faction", "1st choice", "2nd", "3rd"].map(t => h("th", {}, t)))),
+      h("tbody", {}, members.map(m => {
+        const picks = validPicks(m.entry);
+        const f = m.entry.faction;
+        return h("tr", {},
+          h("td", {}, h("span", { class: "who" }, m.avatar ? h("img", { src: m.avatar, alt: "" }) : null, m.name)),
+          h("td", {}, h("span", { class: "fchip " + (f || "none") }, f === "horde" ? "Horde" : f === "alliance" ? "Alliance" : "Undecided")),
+          pickCell(picks[0]), pickCell(picks[1]), pickCell(picks[2]));
+      }))))
+      : h("p", { class: "muted", style: "margin:0" }, "Nobody here yet. Share the join code."));
+
+  return [h("div", { class: "cols" }, faction, comp), h("div", { class: "cols" }, roster), h("div", { class: "cols" }, spread)];
+}
+
+// ---- Actions ------------------------------------------------------------------
+function makeCode() {
+  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = ""; for (let i = 0; i < 6; i++) s += A[Math.floor(Math.random() * A.length)];
+  return s;
+}
+function addGroup(gid) {
+  if (!myData.groupIds.includes(gid)) myData.groupIds.push(gid);
+  myEntry(gid);
+  syncGroupSubs(); scheduleSave(); setActive(gid);
+}
+function leaveGroup(gid) {
+  myData.groupIds = myData.groupIds.filter(x => x !== gid);
+  delete myData.groups[gid];
+  syncGroupSubs(); scheduleSave();
+  setActive(myData.groupIds[0] || null);
+}
+
+$("createForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!db || !myData || readOnly) return;
+  const name = $("newName").value.trim(); if (!name) return;
+  const btn = $("createBtn"); btn.disabled = true;
+  try {
+    let gid = makeCode();
+    for (let i = 0; i < 4 && (await db.doc("groups/" + gid).get()).exists; i++) gid = makeCode();
+    await db.doc("groups/" + gid).set({ name, size: Number($("newSize").value), ownerId: me, createdAt: new Date().toISOString() });
+    $("newName").value = "";
+    addGroup(gid);
+  } catch (err) {
+    showNotice(err && err.code === "permission-denied" ? "The database refused the new group. Check that the Firestore rules from the README are published." : "Couldn't create the group: " + ((err && err.message) || "unknown error"));
+  }
+  btn.disabled = false;
+});
+
+$("joinForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!db || !myData) return;
+  const code = $("joinCode").value.trim().toUpperCase();
+  const st = $("joinStatus");
+  if (!/^[A-Z0-9]{6}$/.test(code)) { st.textContent = "Codes are 6 letters and numbers."; return; }
+  st.textContent = "Looking up…";
+  try {
+    const snap = await db.doc("groups/" + code).get();
+    if (!snap.exists) { st.textContent = "No group has that code. Check it with whoever sent it."; return; }
+    st.textContent = `Joined ${snap.data().name}.`;
+    $("joinCode").value = "";
+    addGroup(code);
+  } catch (err) { st.textContent = "Couldn't look up the code: " + ((err && err.message) || "unknown error"); }
+});
+
+// ---- Boot ----------------------------------------------------------------------
+// Thin wrapper so the app talks to Firestore through the same small API everywhere.
+const FIREBASE = "https://www.gstatic.com/firebasejs/10.12.2/";
+function wrapDoc(s) {
+  return { id: s.id, exists: s.exists(), data: () => s.data(), metadata: { fromCache: s.metadata.fromCache, hasPendingWrites: s.metadata.hasPendingWrites } };
+}
+function makeDb(F, fs) {
+  const ref = p => F.doc(fs, p);
+  return {
+    doc: p => ({
+      get: async () => wrapDoc(await F.getDoc(ref(p))),
+      set: d => F.setDoc(ref(p), d),
+      update: d => F.updateDoc(ref(p), d),
+      delete: () => F.deleteDoc(ref(p)),
+      onSnapshot: (next, err) => F.onSnapshot(ref(p), s => next(wrapDoc(s)), err),
+    }),
+    collection: p => ({
+      where: (field, op, value) => ({
+        onSnapshot: (next, err) => F.onSnapshot(F.query(F.collection(fs, p), F.where(field, op, value)),
+          s => next({ docs: s.docs.map(wrapDoc), metadata: s.metadata }), err),
+      }),
+    }),
+  };
+}
+
+async function boot() {
+  renderBoard();
+  let cfg = null;
+  try { cfg = (await import("./firebase-config.js")).firebaseConfig; } catch (e) {}
+  if (!cfg || !cfg.apiKey || cfg.apiKey.startsWith("PASTE")) { setupNeeded = true; renderGroupList(); renderBoard(); return; }
+  try {
+    const [A, Au, F] = await Promise.all([
+      import(FIREBASE + "firebase-app.js"), import(FIREBASE + "firebase-auth.js"), import(FIREBASE + "firebase-firestore.js")]);
+    const app = A.initializeApp(cfg);
+    const cred = await Au.signInAnonymously(Au.getAuth(app));
+    me = cred.user.uid;
+    db = makeDb(F, F.getFirestore(app));
+  } catch (e) {
+    db = null; connectError = (e && (e.code || e.message)) || "";
+    renderGroupList(); renderBoard(); return;
+  }
+  const timer = setTimeout(() => { if (!myData) showNotice("Can't reach the planner's data yet. Check your connection; it will load when it can."); }, 10000);
+  let first = true;
+  db.doc("members/" + me).onSnapshot(snap => {
+    if (snap.metadata.fromCache && first && !snap.exists) return;
+    clearTimeout(timer);
+    if (!snap.metadata.fromCache) showNotice(readOnly ? $("notice").textContent : "");
+    if (pendingLocal() && !first) return;
+    const data = snap.exists ? snap.data() : null;
+    myData = data ? JSON.parse(JSON.stringify(data)) : emptyMine();
+    myData.groupIds = myData.groupIds || []; myData.groups = myData.groups || {};
+    syncGroupSubs();
+    if (first) {
+      first = false;
+      let saved = null; try { saved = localStorage.getItem("frp.active"); } catch (e) {}
+      setActive(myData.groupIds.includes(saved) ? saved : (myData.groupIds[0] || null));
+      const hash = (location.hash || "").slice(1).toUpperCase();
+      if (/^[A-Z0-9]{6}$/.test(hash) && !myData.groupIds.includes(hash)) $("joinCode").value = hash;
+    } else {
+      if (activeGid && !myData.groupIds.includes(activeGid)) setActive(myData.groupIds[0] || null);
+      renderGroupList(); renderAnalysis();
+    }
+  }, err => { clearTimeout(timer); showNotice("The planner's data stopped responding. Reload the page to reconnect."); });
+}
+boot();
+})();
+</script>
+</body>
+</html>
