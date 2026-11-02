@@ -311,16 +311,9 @@ footer { border-top: 1px solid var(--gold-lo); text-align: center; }
     <div class="choices">
       <section class="panel choice">
         <h2>Create a group</h2>
-        <p>Name your group, pick its size, and you'll get a join code to share. You'll be its leader.</p>
+        <p>Name your group and you'll get a join code to share. You'll be its leader.</p>
         <form id="createForm" class="stack">
           <input id="newName" placeholder="Group name, e.g. Tuesday Raiders" maxlength="40" required>
-          <select id="newSize" aria-label="Group size">
-            <option value="5">5-player dungeon group</option>
-            <option value="10" selected>10-player raid</option>
-            <option value="20">20-player raid</option>
-            <option value="25">25-player raid</option>
-            <option value="40">40-player raid</option>
-          </select>
           <button class="btn" type="submit" id="createBtn">Create group</button>
         </form>
       </section>
@@ -362,13 +355,14 @@ const CLASSES = [
   { id: "druid", name: "Druid", color: "#FF7C0A", specs: [["Balance", "dps"], ["Feral (Cat)", "dps"], ["Feral (Bear)", "tank"], ["Restoration", "heal"]] },
 ];
 const CLASS = Object.fromEntries(CLASSES.map(c => [c.id, c]));
-const SIZES = {
-  5:  { tank: 1, heal: 1, dps: 3,  label: "5-player dungeon" },
-  10: { tank: 2, heal: 3, dps: 5,  label: "10-player raid" },
-  20: { tank: 2, heal: 5, dps: 13, label: "20-player raid" },
-  25: { tank: 3, heal: 6, dps: 16, label: "25-player raid" },
-  40: { tank: 5, heal: 11, dps: 24, label: "40-player raid" },
-};
+// Role targets scale with however many players are in the group:
+// 5 → 1/1/3, 10 → 2/3/5, 20 → 2/5/13, 25 → 3/7/15, 40 → 5/11/24.
+function targetsFor(n) {
+  const tank = n <= 5 ? 1 : n <= 20 ? 2 : Math.round(n / 8);
+  const heal = n <= 5 ? 1 : Math.round(n / 3.7);
+  return { tank, heal, dps: Math.max(0, n - tank - heal) };
+}
+function playersLabel(n) { return `${n} ${n === 1 ? "player" : "players"}`; }
 const ROLE_NAME = { tank: "Tanks", heal: "Healers", dps: "DPS" };
 const ROLE_ONE = { tank: "tank", heal: "healer", dps: "DPS" };
 const ICON = {
@@ -500,7 +494,7 @@ function renderGroupList() {
     const name = g === null ? "Deleted group" : (g ? g.name : "Loading…");
     el.append(h("button", { type: "button", onclick: () => setActive(gid) },
       h("span", {}, name),
-      h("span", { class: "sz" }, g && g.ownerId === me ? "Leader · " : "", g ? (SIZES[g.size] || SIZES[10]).label : "")));
+      h("span", { class: "sz" }, g && g.ownerId === me ? "Leader" : "")));
   }
 }
 
@@ -510,7 +504,7 @@ function renderHome() {
   const st = $("homeStatus");
   st.replaceChildren();
   const off = !db;
-  for (const id of ["newName", "newSize", "createBtn", "joinCode", "joinBtn"]) $(id).disabled = off;
+  for (const id of ["newName", "createBtn", "joinCode", "joinBtn"]) $(id).disabled = off;
   if (booting) st.append(h("p", { class: "muted", style: "margin:0;text-align:center" }, "Connecting…"));
   else if (setupNeeded) st.append(h("div", { class: "banner" }, h("h2", {}, "Almost ready"),
     h("p", {}, "This site needs a free Firebase project to store groups, votes and picks. Fill in firebase-config.js using the steps in the README, then reload.")));
@@ -581,23 +575,19 @@ function renderHeader(g) {
   });
   const head = h("section", { class: "panel" },
     h("div", { class: "ghead" },
-      h("div", {}, h("div", { class: "label" }, (SIZES[g.size] || SIZES[10]).label), h("h2", {}, g.name)),
+      h("div", {}, h("div", { class: "label" }, isOwner ? "You lead this group" : "Group"), h("h2", {}, g.name)),
       h("div", { class: "row" }, h("span", { class: "label" }, "Join code"), codeEl, copyBtn)));
 
   if (isOwner) {
     const nameIn = h("input", { id: "editName", class: "grow", maxlength: "40", value: g.name, "aria-label": "Group name" });
     const rename = h("button", { class: "btn ghost", type: "button" }, "Rename");
     rename.addEventListener("click", () => { const v = nameIn.value.trim(); if (v && v !== g.name) updateGroup({ name: v }, "rename the group"); });
-    const sizeSel = h("select", { id: "editSize", "aria-label": "Change group size" },
-      Object.entries(SIZES).map(([k, v]) => h("option", { value: k, selected: String(g.size) === k }, v.label)));
-    sizeSel.addEventListener("change", () => updateGroup({ size: Number(sizeSel.value) }, "change the size"));
     const del = confirmButton("Delete group", "Click again to delete for everyone", "btn danger", async () => {
       try { await db.doc("groups/" + activeGid).delete(); leaveGroup(activeGid); } catch (e) { showNotice("Couldn't delete: " + (e.message || e.code)); }
     });
     head.append(h("div", { class: "leader-tools" },
       h("div", { class: "label" }, "Leader controls · remove players from the Muster Roll below"),
-      h("div", { class: "row" }, nameIn, rename),
-      h("div", { class: "row" }, h("span", { class: "label" }, "Size"), sizeSel, del)));
+      h("div", { class: "row" }, nameIn, rename, del)));
   } else {
     head.append(h("div", { class: "row" }, confirmButton("Leave group", "Click again to leave", "btn ghost", () => leaveGroup(activeGid))));
   }
@@ -667,8 +657,9 @@ function renderEntry(gid) {
 }
 
 // ---- Analysis ----------------------------------------------------------------
-function analyse(size, members) {
-  const t = SIZES[size] || SIZES[10];
+function analyse(members) {
+  const size = members.length;
+  const t = targetsFor(size);
   const counts = { tank: 0, heal: 0, dps: 0 };
   const flex = { tank: [], heal: [], dps: [] };
   const byRole = { tank: [], heal: [], dps: [] };
@@ -700,10 +691,7 @@ function analyse(size, members) {
       issues.push(["warn", msg]);
     }
   }
-  if (counts.dps > t.dps) issues.push(["warn", `More DPS than slots: ${counts.dps} for ${t.dps}. Some DPS will sit out or need to switch roles.`]);
-  else if (picked >= size && counts.dps < t.dps) issues.push(["warn", `Light on DPS: ${counts.dps} of ${t.dps}.`]);
-  if (picked > size) issues.push(["info", `${picked} players for ${size} spots. Plan a bench rotation or a second group.`]);
-  else if (picked < size) issues.push(["info", `${size - picked} of ${size} spots still open.`]);
+  if (picked >= size && counts.dps < t.dps) issues.push(["warn", `Light on DPS: ${counts.dps} of ${t.dps}.`]);
   const stackLimit = Math.max(2, Math.ceil(size * 0.25));
   for (const [cid, n] of Object.entries(classCount)) if (n > stackLimit) issues.push(["warn", `Heavy on ${CLASS[cid].name}: ${n} players. Expect to compete for the same gear.`]);
   if (size >= 10 && picked >= Math.min(size, 6)) {
@@ -711,13 +699,12 @@ function analyse(size, members) {
     if (missing.length && missing.length < CLASSES.length) issues.push(["info", `No ${listNames(missing)} as a main yet.`]);
   }
   if (unpicked.length) issues.push(["info", `Still to pick a class: ${listNames(unpicked)}.`]);
-  const roleOk = counts.tank === t.tank && counts.heal >= t.heal && counts.heal <= t.heal + (size >= 20 ? 1 : 0);
   let verdict;
   if (picked === 0) verdict = ["warn", "No picks yet"];
   else if (issues.some(i => i[0] === "crit")) verdict = ["crit", "Missing a role"];
-  else if (roleOk && !issues.some(i => i[0] === "warn")) verdict = ["good", picked >= size ? "Balanced" : "On track"];
+  else if (!issues.some(i => i[0] === "warn")) verdict = ["good", picked >= size ? "Balanced" : "On track"];
   else verdict = ["warn", "Needs attention"];
-  if (verdict[0] === "good") issues.unshift(["good", "Tank and healer counts match the group size."]);
+  if (verdict[0] === "good") issues.unshift(["good", `Tank and healer counts suit a group of ${size}.`]);
   return { t, counts, classCount, issues, verdict, horde, alliance, undecided, picked };
 }
 
@@ -738,14 +725,14 @@ async function renderAnalysis() {
     return { ...r, name: (r.nick || p.name || "Unnamed adventurer") + (r.id === me ? " (you)" : ""), avatar: p.avatarUrl };
   }).sort((a, b) => a.name.localeCompare(b.name));
   const isLeader = g.ownerId === me;
-  host.replaceChildren(...renderAnalysisPanels(g.size, named.filter(m => !removed.has(m.id)), {
+  host.replaceChildren(...renderAnalysisPanels(named.filter(m => !removed.has(m.id)), {
     ownerId: g.ownerId, isLeader,
     removed: isLeader ? named.filter(m => removed.has(m.id)) : [],
   }));
 }
 
-function renderAnalysisPanels(size, members, ctx = {}) {
-  const a = analyse(size, members);
+function renderAnalysisPanels(members, ctx = {}) {
+  const a = analyse(members);
   const total = members.length;
 
   // Faction vote
@@ -774,7 +761,7 @@ function renderAnalysisPanels(size, members, ctx = {}) {
   }
   const comp = h("section", { class: "panel" },
     h("div", { class: "ghead" }, h("h3", {}, "Raid Composition"), h("span", { class: "verdict " + a.verdict[0] }, a.verdict[1])),
-    h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, `Target for a ${a.t.label}: ${a.t.tank} tanks, ${a.t.heal} healers, ${a.t.dps} DPS. Counts use each player's 1st choice.`),
+    h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, `For ${playersLabel(total)} you want ${a.t.tank} ${a.t.tank === 1 ? "tank" : "tanks"}, ${a.t.heal} ${a.t.heal === 1 ? "healer" : "healers"} and ${a.t.dps} DPS. This updates as people join. Counts use each player's 1st choice.`),
     meters,
     h("ul", { class: "issues" }, a.issues.map(([sev, msg]) => h("li", { class: sev }, msg))));
 
@@ -852,7 +839,7 @@ $("createForm").addEventListener("submit", async e => {
   try {
     let gid = makeCode();
     for (let i = 0; i < 4 && (await db.doc("groups/" + gid).get()).exists; i++) gid = makeCode();
-    await db.doc("groups/" + gid).set({ name, size: Number($("newSize").value), ownerId: me, createdAt: new Date().toISOString() });
+    await db.doc("groups/" + gid).set({ name, ownerId: me, createdAt: new Date().toISOString() });
     $("newName").value = "";
     addGroup(gid);
   } catch (err) {

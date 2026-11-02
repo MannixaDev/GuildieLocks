@@ -5,9 +5,9 @@ A planning board for World of Warcraft: Forever groups. Start a group, share its
 - votes **Horde or Alliance**
 - lists up to three **class/spec choices** in order of preference
 
-Whoever creates a group is its **leader**. The leader can rename it, change its size, remove players (and let them back in), and delete it.
+Whoever creates a group is its **leader**. The leader can rename it, remove players (and let them back in), and delete it.
 
-The board then checks the composition against the group size (5-player dungeon, or a 10, 20, 25 or 40-player raid). It flags too few tanks or healers, too many of a role, class stacking and open spots, and names who could switch to a backup role.
+Groups can be any size. The board works out how many tanks and healers the group needs from how many players have joined (for example, 10 players → 2 tanks and 3 healers). It flags too few tanks or healers, too many of a role and class stacking, and names who could switch to a backup role.
 
 It's a single static page (`index.html`), hosted on GitHub Pages, with Firebase Firestore storing the shared data.
 
@@ -37,7 +37,7 @@ Each browser signs in anonymously in the background, so nobody needs an account.
 
 ## Classes and specs
 
-The class list follows the published Forever guides: 9 classes, all available to both factions. Druid Feral is split into Cat (DPS) and Bear (tank) so tank counts come out right. To change classes, specs, or the role targets per group size, edit `CLASSES` and `SIZES` near the top of the script in `index.html`.
+The class list follows the published Forever guides: 9 classes, all available to both factions. Druid Feral is split into Cat (DPS) and Bear (tank) so tank counts come out right. To change classes, specs, or how role targets scale with group size, edit `CLASSES` and `targetsFor` near the top of the script in `index.html`.
 
 ---
 
