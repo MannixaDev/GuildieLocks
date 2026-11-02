@@ -3,7 +3,7 @@
 A planning board for World of Warcraft: Forever groups. Start a group, share its join code, and everyone:
 
 - votes **Horde or Alliance**
-- lists up to three **class/spec choices** in order of preference
+- picks everything they'd happily play: single **specs**, a whole **class** ("any spec"), or a whole **role** (any tank, healer, melee or ranged DPS), plus an optional top choice
 
 Whoever creates a group is its **leader**. The leader can rename it, remove players (and let them back in), and delete it.
 

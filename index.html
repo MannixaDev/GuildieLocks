@@ -8,21 +8,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700;900&family=Alegreya+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
-/* Layout: a war-table board. Left rail lists your groups; the main board shows one group's vote, comp check and roster. */
-/* One committed look: a torch-lit stone hall. Gilded frames on dark leather panels,
-   parchment text, item-quality colours for verdicts, faction banners for the vote. */
+/* Layout: a landing page (create / join), then one group's board: vote, comp check, roster. */
+/* One committed look, after the Forever medallion: antique bronze frames, a glowing
+   arcane-teal core, ivory carved lettering on a deep blue-black night. */
 :root {
-  --bg: #0b0907;
-  --panel: #1a140e;
-  --panel-2: #2a2016;
-  --line: #5a4424;
-  --gold: #e8b64c;
-  --gold-hi: #ffe39a;
-  --gold-lo: #8a6020;
-  --fg: #eadfc4;
-  --muted: #ab9a78;
-  --accent: #e8b64c;
-  --accent-ink: #1a1006;
+  --bg: #050b0e;
+  --panel: #0c171c;
+  --panel-2: #132429;
+  --line: #2f4247;
+  --gold: #d6b27a;
+  --gold-hi: #f6ead0;
+  --gold-lo: #7a5a32;
+  --teal: #29b2c6;
+  --teal-hi: #8ee9f5;
+  --teal-deep: #0b4552;
+  --fg: #e7e3d8;
+  --muted: #8fa3a7;
+  --accent: #29b2c6;
+  --accent-ink: #f6ead0;
   --horde: #b3241a;
   --horde-hi: #ff5a3c;
   --alliance: #1c4fa8;
@@ -164,25 +167,26 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--lin
 /* ---- Azeroth theme layer ---- */
 body {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232, 182, 76, .16), transparent 70%),
+    radial-gradient(ellipse 70% 45% at 50% -8%, rgba(41, 178, 198, .24), transparent 70%),
+    radial-gradient(ellipse 40% 25% at 50% 0%, rgba(214, 178, 122, .10), transparent 70%),
     radial-gradient(ellipse 60% 40% at 0% 100%, rgba(179, 36, 26, .12), transparent 70%),
     radial-gradient(ellipse 60% 40% at 100% 100%, rgba(28, 79, 168, .14), transparent 70%),
     repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 2px, transparent 2px 6px),
     var(--bg);
   background-attachment: fixed;
 }
-h1, h2, h3 { font-family: var(--font-display); font-weight: 700; color: var(--gold); text-shadow: 0 1px 0 #000, 0 0 14px rgba(232, 182, 76, .25); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; color: var(--gold); text-shadow: 0 1px 0 #000, 0 0 14px rgba(41, 178, 198, .25); }
 h3 { font-size: 1.05rem; letter-spacing: .06em; }
 h2 { font-size: 1.45rem; }
 
 header.top { flex-direction: column; align-items: center; text-align: center; border-bottom: none; padding-bottom: 6px; gap: 6px; }
 header.top p { margin: 0 auto; }
-.crest { width: 64px; height: 64px; filter: drop-shadow(0 0 10px rgba(232, 182, 76, .35)); }
+.crest { width: 84px; height: 84px; filter: drop-shadow(0 0 16px rgba(41, 178, 198, .55)); }
 h1.title {
-  font-family: var(--font-title); font-weight: 900; font-size: clamp(2rem, 6vw, 3.4rem); letter-spacing: .03em; line-height: 1.05;
-  background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 45%, var(--gold-lo) 100%);
+  font-family: var(--font-display); font-weight: 900; font-size: clamp(2.2rem, 7vw, 3.8rem); letter-spacing: .08em; line-height: 1.05;
+  background: linear-gradient(180deg, #fffaf0 0%, var(--gold-hi) 40%, #cdb48a 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
-  text-shadow: none; filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 18px rgba(232, 182, 76, .3));
+  text-shadow: none; filter: drop-shadow(0 2px 0 #1a0f05) drop-shadow(0 0 2px #3a2810) drop-shadow(0 0 22px rgba(41, 178, 198, .55));
 }
 .subtitle { font-family: var(--font-display); letter-spacing: .25em; text-transform: uppercase; font-size: .8rem; color: var(--muted); }
 .divider { height: 14px; width: min(520px, 100%); margin: 4px auto 0;
@@ -191,7 +195,7 @@ h1.title {
     radial-gradient(circle, var(--gold) 0 3px, transparent 4px) center / 14px 14px no-repeat; }
 
 .panel {
-  background: linear-gradient(180deg, rgba(255, 220, 150, .05), transparent 40%), var(--panel);
+  background: radial-gradient(ellipse 90% 60% at 50% 0%, rgba(41, 178, 198, .06), transparent 70%), var(--panel);
   border: 1px solid var(--gold-lo);
   border-radius: var(--r);
   box-shadow: 0 0 0 1px #000, inset 0 0 0 1px rgba(255, 220, 150, .08), inset 0 0 30px rgba(0, 0, 0, .6), 0 8px 24px rgba(0, 0, 0, .55);
@@ -204,28 +208,28 @@ h1.title {
 .panel::after { bottom: -3px; right: -3px; border-left: none; border-top: none; }
 
 .label { color: var(--muted); font-family: var(--font-display); letter-spacing: .12em; }
-input, select { background: #0e0b08; border-color: var(--line); color: var(--fg); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .7); }
-input:focus-visible, select:focus-visible { outline: none; border-color: var(--gold); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .7), 0 0 0 1px var(--gold), 0 0 12px rgba(232, 182, 76, .4); }
+input, select { background: #04090b; border-color: var(--line); color: var(--fg); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .7); }
+input:focus-visible, select:focus-visible { outline: none; border-color: var(--gold); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .7), 0 0 0 1px var(--gold), 0 0 12px rgba(41, 178, 198, .45); }
 button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
 
 .btn {
   font-family: var(--font-display); letter-spacing: .06em; color: var(--gold-hi);
-  background: linear-gradient(180deg, #a3271a 0%, #6e140b 55%, #4a0b05 100%);
+  background: linear-gradient(180deg, #1f8fa3 0%, #0f5a69 55%, #08333d 100%);
   border: 1px solid var(--gold);
-  box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255, 200, 150, .35), 0 3px 8px rgba(0, 0, 0, .6);
+  box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(160, 240, 255, .4), 0 3px 8px rgba(0, 0, 0, .6);
   text-shadow: 0 1px 0 #000;
 }
-.btn:hover:not(:disabled) { background: linear-gradient(180deg, #c33222 0%, #8a1a0e 55%, #5a0e07 100%); color: #fff3cc; }
+.btn:hover:not(:disabled) { background: linear-gradient(180deg, #2bb3c9 0%, #147285 55%, #0a3f4b 100%); color: #fff; box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(160, 240, 255, .5), 0 0 14px rgba(41, 178, 198, .45); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
-.btn.ghost { background: linear-gradient(180deg, #2b2116, #17110b); color: var(--gold); border-color: var(--gold-lo); }
+.btn.ghost { background: linear-gradient(180deg, #16262b, #0b1518); color: var(--gold); border-color: var(--gold-lo); }
 .btn.ghost:hover { border-color: var(--gold); color: var(--gold-hi); }
 .btn.danger { background: transparent; color: var(--crit); border-color: var(--crit); box-shadow: none; }
 
 .grouplist button { font-family: var(--font-display); color: var(--fg); }
 .grouplist button:hover { background: var(--panel-2); color: var(--gold-hi); }
-.grouplist button[aria-current="true"] { background: linear-gradient(90deg, rgba(232, 182, 76, .18), transparent); border-color: var(--gold-lo); color: var(--gold-hi); }
-.code { background: #0e0b08; border: 1px solid var(--gold-lo); color: var(--gold-hi); }
-.banner { border: 1px solid var(--gold-lo); background: linear-gradient(180deg, rgba(232, 182, 76, .08), transparent), var(--panel); box-shadow: inset 0 0 30px rgba(0,0,0,.6); }
+.grouplist button[aria-current="true"] { background: linear-gradient(90deg, rgba(214, 178, 122, .18), transparent); border-color: var(--gold-lo); color: var(--gold-hi); }
+.code { background: #04090b; border: 1px solid var(--gold-lo); color: var(--gold-hi); }
+.banner { border: 1px solid var(--gold-lo); background: linear-gradient(180deg, rgba(214, 178, 122, .08), transparent), var(--panel); box-shadow: inset 0 0 30px rgba(0,0,0,.6); }
 .notice { background: var(--warn-bg); border-left-color: var(--warn); }
 
 /* Faction banners */
@@ -242,33 +246,47 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
 .fbtn.alliance:hover { color: var(--alliance-hi); border-color: var(--alliance); }
 .fbtn.horde[aria-pressed="true"] { color: #ffe0c8; background: linear-gradient(180deg, #c22c1f, #5c0d07); border-color: var(--horde-hi); filter: drop-shadow(0 0 12px rgba(255, 90, 60, .55)); transform: translateY(-2px); }
 .fbtn.alliance[aria-pressed="true"] { color: #e2efff; background: linear-gradient(180deg, #2a64c8, #0d2758); border-color: var(--alliance-hi); filter: drop-shadow(0 0 12px rgba(95, 164, 255, .55)); transform: translateY(-2px); }
-.tally { height: 28px; border: 1px solid var(--gold-lo); background: #0e0b08; border-radius: 2px; }
+.tally { height: 28px; border: 1px solid var(--gold-lo); background: #04090b; border-radius: 2px; }
 .tally .h { background: linear-gradient(180deg, #d0392a, #6e140b); }
 .tally .a { background: linear-gradient(180deg, #3577e0, #12306a); }
 
 /* Item-quality verdicts and quest-log issues */
-.verdict { border-radius: 2px; font-family: var(--font-display); letter-spacing: .06em; background: #0e0b08; border: 1px solid currentColor; }
-.verdict.good { background: #0e0b08; color: var(--q-uncommon); }
-.verdict.warn { background: #0e0b08; color: var(--q-legendary); }
-.verdict.crit { background: #0e0b08; color: var(--crit); }
+.verdict { border-radius: 2px; font-family: var(--font-display); letter-spacing: .06em; background: #04090b; border: 1px solid currentColor; }
+.verdict.good { background: #04090b; color: var(--q-uncommon); }
+.verdict.warn { background: #04090b; color: var(--q-legendary); }
+.verdict.crit { background: #04090b; color: var(--crit); }
 .issues li { border-radius: 2px; background: rgba(0,0,0,.25); color: var(--fg); }
 .issues li.info { background: rgba(0,0,0,.25); border-color: var(--q-poor); }
 .issues li::before { content: "\25C6"; margin-right: 8px; font-size: .75em; color: var(--gold); }
-.slot { border-color: var(--line); border-radius: 2px; background: #0e0b08; }
+.slot { border-color: var(--line); border-radius: 2px; background: #04090b; }
 .slot.on { box-shadow: 0 0 6px currentColor; }
 .slot.on.bg-tank { color: var(--tank); } .slot.on.bg-heal { color: var(--heal); } .slot.on.bg-dps { color: var(--dps); }
-.spread .track { background: #0e0b08; border: 1px solid var(--line); border-radius: 2px; height: 12px; }
+.spread .track { background: #04090b; border: 1px solid var(--line); border-radius: 2px; height: 12px; }
 .spread .fill { border-radius: 0; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 0 rgba(0,0,0,.35) !important; }
 
 th { font-family: var(--font-display); color: var(--gold); border-bottom-color: var(--gold-lo); }
 td { border-bottom-color: rgba(90, 68, 36, .6); }
-tbody tr:hover td { background: rgba(232, 182, 76, .05); }
+tbody tr:hover td { background: rgba(214, 178, 122, .05); }
 .fchip { border-radius: 2px; font-family: var(--font-display); letter-spacing: .05em; }
 .fchip.horde { background: linear-gradient(180deg, #c22c1f, #6e140b); }
 .fchip.alliance { background: linear-gradient(180deg, #2a64c8, #12306a); }
-.fchip.none { background: #0e0b08; border: 1px solid var(--line); }
+.fchip.none { background: #04090b; border: 1px solid var(--line); }
 .dot { box-shadow: 0 0 0 1px #000, 0 0 6px rgba(255,255,255,.15); }
 footer { border-top: 1px solid var(--gold-lo); text-align: center; }
+
+/* Flexible picks */
+.picker { display: grid; gap: 10px; }
+.optrow, .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips { gap: 4px 10px; }
+.classgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.classcard { border: 1px solid var(--line); border-radius: 3px; padding: 8px 10px; display: grid; gap: 6px; background: rgba(0, 0, 0, .25); }
+.classcard .cname { font-family: var(--font-display); font-weight: 700; color: var(--cc); font-size: .95rem; letter-spacing: .04em; }
+.opt { display: inline-flex; align-items: center; gap: 4px; font: inherit; font-size: .82rem; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: #04090b; color: var(--muted); cursor: pointer; }
+.opt.big { font-family: var(--font-display); font-size: .9rem; padding: 6px 14px; }
+.opt:hover:not(:disabled) { border-color: var(--teal); color: var(--fg); }
+.opt[aria-pressed="true"] { background: var(--teal-deep); border-color: var(--teal); color: var(--gold-hi); box-shadow: 0 0 8px rgba(41, 178, 198, .35); }
+.opt:disabled { cursor: default; opacity: .7; }
+.opt svg.ri { width: 13px; height: 13px; }
 
 /* Landing and leader controls */
 .home { display: grid; gap: 20px; width: 100%; max-width: 880px; margin: 0 auto; }
@@ -291,12 +309,19 @@ footer { border-top: 1px solid var(--gold-lo); text-align: center; }
 
 <div class="wrap">
   <header class="top">
-    <svg class="crest" viewBox="0 0 64 64" aria-hidden="true">
-      <defs><linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe39a"/><stop offset=".5" stop-color="#e8b64c"/><stop offset="1" stop-color="#8a6020"/></linearGradient></defs>
-      <path d="M32 3 56 12v18c0 15-10 26-24 31C18 56 8 45 8 30V12z" fill="#1a140e" stroke="url(#gold)" stroke-width="3"/>
-      <path d="M20 44 44 20M44 44 20 20" stroke="url(#gold)" stroke-width="4" stroke-linecap="round"/>
-      <path d="M17 17h6v6h-6zM41 17h6v6h-6z" fill="url(#gold)"/>
-      <circle cx="32" cy="32" r="6" fill="#b3241a" stroke="url(#gold)" stroke-width="2"/>
+    <!-- Original medallion: bronze rune ring around a glowing arcane core, crossed blades. -->
+    <svg class="crest" viewBox="0 0 80 80" aria-hidden="true">
+      <defs>
+        <linearGradient id="bronze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3dcae"/><stop offset=".45" stop-color="#c79a5c"/><stop offset="1" stop-color="#5e4024"/></linearGradient>
+        <radialGradient id="core" cx=".5" cy=".42" r=".6"><stop offset="0" stop-color="#b8f4fb"/><stop offset=".35" stop-color="#2bb3c9"/><stop offset="1" stop-color="#062a33"/></radialGradient>
+      </defs>
+      <path d="M40 2l4 6h-8zM40 78l-4-6h8zM2 40l6-4v8zM78 40l-6 4v-8z" fill="url(#bronze)"/>
+      <circle cx="40" cy="40" r="32" fill="#120c06" stroke="url(#bronze)" stroke-width="4"/>
+      <circle cx="40" cy="40" r="27" fill="none" stroke="#c79a5c" stroke-width="1" stroke-dasharray="1.5 4.2" opacity=".85"/>
+      <circle cx="40" cy="40" r="22" fill="url(#core)" stroke="url(#bronze)" stroke-width="2.5"/>
+      <path d="M29 51 51 29M51 51 29 29" stroke="#f6ead0" stroke-width="3" stroke-linecap="round" opacity=".92"/>
+      <path d="M26 27l5-1-1 5zM54 27l-5-1 1 5z" fill="#f6ead0"/>
+      <circle cx="40" cy="40" r="3.5" fill="#f6ead0"/>
     </svg>
     <div class="subtitle">World of Warcraft: Forever</div>
     <h1 class="title">GuildieLocks</h1>
@@ -344,16 +369,18 @@ footer { border-top: 1px solid var(--gold-lo); text-align: center; }
 
 // ---- Game data ------------------------------------------------------------
 const CLASSES = [
-  { id: "warrior", name: "Warrior", color: "#C69B6D", specs: [["Arms", "dps"], ["Fury", "dps"], ["Protection", "tank"]] },
-  { id: "paladin", name: "Paladin", color: "#F48CBA", specs: [["Holy", "heal"], ["Protection", "tank"], ["Retribution", "dps"]] },
-  { id: "hunter", name: "Hunter", color: "#AAD372", specs: [["Beast Mastery", "dps"], ["Marksmanship", "dps"], ["Survival", "dps"]] },
-  { id: "rogue", name: "Rogue", color: "#FFF468", specs: [["Assassination", "dps"], ["Combat", "dps"], ["Subtlety", "dps"]] },
-  { id: "priest", name: "Priest", color: "#F2F2F2", specs: [["Discipline", "heal"], ["Holy", "heal"], ["Shadow", "dps"]] },
-  { id: "shaman", name: "Shaman", color: "#0070DD", specs: [["Elemental", "dps"], ["Enhancement", "dps"], ["Restoration", "heal"]] },
-  { id: "mage", name: "Mage", color: "#3FC7EB", specs: [["Arcane", "dps"], ["Fire", "dps"], ["Frost", "dps"]] },
-  { id: "warlock", name: "Warlock", color: "#8788EE", specs: [["Affliction", "dps"], ["Demonology", "dps"], ["Destruction", "dps"]] },
-  { id: "druid", name: "Druid", color: "#FF7C0A", specs: [["Balance", "dps"], ["Feral (Cat)", "dps"], ["Feral (Bear)", "tank"], ["Restoration", "heal"]] },
+  { id: "warrior", name: "Warrior", color: "#C69B6D", specs: [["Arms", "melee"], ["Fury", "melee"], ["Protection", "tank"]] },
+  { id: "paladin", name: "Paladin", color: "#F48CBA", specs: [["Holy", "heal"], ["Protection", "tank"], ["Retribution", "melee"]] },
+  { id: "hunter", name: "Hunter", color: "#AAD372", specs: [["Beast Mastery", "ranged"], ["Marksmanship", "ranged"], ["Survival", "ranged"]] },
+  { id: "rogue", name: "Rogue", color: "#FFF468", specs: [["Assassination", "melee"], ["Combat", "melee"], ["Subtlety", "melee"]] },
+  { id: "priest", name: "Priest", color: "#F2F2F2", specs: [["Discipline", "heal"], ["Holy", "heal"], ["Shadow", "ranged"]] },
+  { id: "shaman", name: "Shaman", color: "#0070DD", specs: [["Elemental", "ranged"], ["Enhancement", "melee"], ["Restoration", "heal"]] },
+  { id: "mage", name: "Mage", color: "#3FC7EB", specs: [["Arcane", "ranged"], ["Fire", "ranged"], ["Frost", "ranged"]] },
+  { id: "warlock", name: "Warlock", color: "#8788EE", specs: [["Affliction", "ranged"], ["Demonology", "ranged"], ["Destruction", "ranged"]] },
+  { id: "druid", name: "Druid", color: "#FF7C0A", specs: [["Balance", "ranged"], ["Feral (Cat)", "melee"], ["Feral (Bear)", "tank"], ["Restoration", "heal"]] },
 ];
+const ALL_SPECS = CLASSES.flatMap(c => c.specs.map(([s, r]) => ({ c: c.id, s, r })));
+const KIND_NAME = { tank: "tank", heal: "healer", melee: "melee DPS", ranged: "ranged DPS" };
 const CLASS = Object.fromEntries(CLASSES.map(c => [c.id, c]));
 // Role targets scale with however many players are in the group:
 // 5 → 1/1/3, 10 → 2/3/5, 20 → 2/5/13, 25 → 3/7/15, 40 → 5/11/24.
@@ -377,11 +404,32 @@ const FACTION_ICON = {
   alliance: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 28 6v9c0 7-5 12-12 15C9 27 4 22 4 15V6z"/><path d="M16 7l2 5h5l-4 3 2 5-5-3-5 3 2-5-4-3h5z" fill="#0b0907"/></svg>',
 };
 
-function roleOf(p) {
-  const c = CLASS[p && p.c]; if (!c) return null;
-  const s = c.specs.find(x => x[0] === p.s); return s ? s[1] : null;
+// A pick is a token: "spec:<class>:<spec>", "class:<class>" (any spec of that class)
+// or "role:<tank|heal|melee|ranged>" (any spec that plays that role).
+const baseRole = k => (k === "melee" || k === "ranged") ? "dps" : k;
+function specsOf(tok) {
+  const [kind, a, b] = String(tok).split(":");
+  if (kind === "spec") return ALL_SPECS.filter(x => x.c === a && x.s === b);
+  if (kind === "class") return ALL_SPECS.filter(x => x.c === a);
+  if (kind === "role") return ALL_SPECS.filter(x => x.r === a);
+  return [];
 }
-function validPicks(entry) { return ((entry && entry.picks) || []).filter(p => roleOf(p)); }
+function rolesOf(tok) { return [...new Set(specsOf(tok).map(x => baseRole(x.r)))]; }
+function tokenClass(tok) { const [k, a] = String(tok).split(":"); return (k === "spec" || k === "class") ? a : null; }
+function tokenLabel(tok) {
+  const [kind, a, b] = tok.split(":");
+  if (kind === "spec") return `${b} ${CLASS[a].name}`;
+  if (kind === "class") return `${CLASS[a].name} (any spec)`;
+  return `Any ${KIND_NAME[a]}`;
+}
+// Entries saved before flexible picks stored picks: [{c, s}]; read those as spec tokens.
+// main is the player's top choice, or "any" for "put me wherever the group needs".
+function normEntry(e) {
+  e = e || {};
+  const wants = (Array.isArray(e.wants) ? e.wants : (e.picks || []).map(p => `spec:${p.c}:${p.s}`)).filter(t => specsOf(t).length);
+  const main = e.main === "any" ? "any" : wants.includes(e.main) ? e.main : (wants[0] || null);
+  return { faction: e.faction || null, wants, main };
+}
 
 // ---- Small DOM helpers ------------------------------------------------------
 function h(tag, attrs, ...kids) {
@@ -417,7 +465,7 @@ let saveTimer = null, saving = false, saveAgain = false;
 
 function emptyMine() { return { nick: "", groupIds: [], groups: {} }; }
 function myEntry(gid) {
-  if (!myData.groups[gid]) myData.groups[gid] = { faction: null, picks: [] };
+  if (!myData.groups[gid] || !Array.isArray(myData.groups[gid].wants)) myData.groups[gid] = normEntry(myData.groups[gid]);
   return myData.groups[gid];
 }
 
@@ -614,44 +662,57 @@ function renderEntry(gid) {
     return b;
   };
 
-  const picksBox = h("div", { style: "display:grid;gap:8px" });
-  const ranks = ["1st", "2nd", "3rd"];
-  for (let i = 0; i < 3; i++) {
-    const cur = entry.picks[i] || {};
-    const cls = h("select", { id: "pickC" + i, "aria-label": ranks[i] + " choice class" },
-      h("option", { value: "" }, i === 0 ? "Pick a class" : "Backup class (optional)"),
-      CLASSES.map(c => h("option", { value: c.id, selected: cur.c === c.id }, c.name)));
-    const spec = h("select", { id: "pickS" + i, "aria-label": ranks[i] + " choice spec" });
-    const fillSpecs = () => {
-      spec.replaceChildren();
-      const c = CLASS[cls.value];
-      if (!c) { spec.append(h("option", { value: "" }, "Spec")); spec.disabled = true; return; }
-      spec.disabled = false;
-      for (const [s, r] of c.specs) spec.append(h("option", { value: s, selected: (entry.picks[i] || {}).s === s }, `${s} · ${ROLE_ONE[r]}`));
+  // Pick as much as you like: whole roles, whole classes, or single specs.
+  // Chips already covered by a role or class pick show as lit but can't be toggled on their own.
+  const picker = h("div", { class: "picker" });
+  const drawPicker = () => {
+    picker.replaceChildren();
+    const has = t => entry.wants.includes(t);
+    const covered = (c, s, r) => has("class:" + c) || has("role:" + r);
+    const toggle = t => {
+      entry.wants = has(t) ? entry.wants.filter(x => x !== t) : [...entry.wants, t];
+      // Drop specs now covered by a broader pick so the list stays tidy.
+      entry.wants = entry.wants.filter(x => {
+        if (!x.startsWith("spec:")) return true;
+        const sp = specsOf(x)[0];
+        return !entry.wants.includes("class:" + sp.c) && !entry.wants.includes("role:" + sp.r);
+      });
+      if (entry.main !== "any" && !entry.wants.includes(entry.main)) entry.main = entry.wants[0] || null;
+      drawPicker(); scheduleSave(); renderAnalysis();
     };
-    const commit = () => {
-      const picks = [];
-      for (let j = 0; j < 3; j++) {
-        const c = $("pickC" + j) ? $("pickC" + j).value : "", s = $("pickS" + j) ? $("pickS" + j).value : "";
-        picks[j] = c && s ? { c, s } : null;
-      }
-      entry.picks = picks.filter(Boolean);
-      scheduleSave(); renderAnalysis();
+    const chip = (t, label, opts = {}) => {
+      const lit = has(t) || !!opts.implied;
+      return h("button", { type: "button", class: "opt" + (opts.big ? " big" : ""), "aria-pressed": lit ? "true" : "false",
+        disabled: (opts.implied && !has(t)) || readOnly, title: opts.implied && !has(t) ? "Covered by a broader pick" : null,
+        onclick: () => toggle(t), html: opts.icon || "" }, label);
     };
-    cls.addEventListener("change", () => { fillSpecs(); commit(); });
-    spec.addEventListener("change", commit);
-    fillSpecs();
-    picksBox.append(h("div", { class: "pick" }, h("span", { class: "n" }, ranks[i]), cls, spec));
-  }
+    picker.append(
+      h("div", { class: "label" }, "Happy to play any spec in a role"),
+      h("div", { class: "optrow" }, ["tank", "heal", "melee", "ranged"].map(k =>
+        chip("role:" + k, "Any " + KIND_NAME[k], { big: true, icon: ICON[baseRole(k)] }))),
+      h("div", { class: "label" }, "Or pick classes and specs"),
+      h("div", { class: "classgrid" }, CLASSES.map(c => h("div", { class: "classcard", style: `--cc:${c.color}` },
+        h("div", { class: "cname" }, c.name),
+        h("div", { class: "optrow" },
+          chip("class:" + c.id, "Any spec"),
+          c.specs.map(([s, r]) => chip(`spec:${c.id}:${s}`, s, { icon: ICON[baseRole(r)], implied: covered(c.id, s, r) })))))));
+    if (entry.wants.length) {
+      const sel = h("select", { id: "mainPick", class: "grow", "aria-label": "Top choice", disabled: readOnly },
+        h("option", { value: "any", selected: entry.main === "any" }, "No preference, put me where the group needs me"),
+        entry.wants.map(t => h("option", { value: t, selected: entry.main === t }, tokenLabel(t))));
+      sel.addEventListener("change", () => { entry.main = sel.value; scheduleSave(); renderAnalysis(); });
+      picker.append(h("div", { class: "row" }, h("label", { class: "label", for: "mainPick" }, "Top choice"), sel));
+    }
+  };
+  drawPicker();
 
   const wrap = h("section", { class: "panel" },
     h("div", { class: "ghead" }, h("h3", {}, "Your Character"), h("div", { id: "saveStatus", class: "status" }, readOnly ? "Read only" : "")),
     h("div", { class: "row" }, h("label", { class: "label", for: "nick" }, "Name"), nick),
     h("div", { class: "label" }, "Choose your allegiance"),
     h("div", { class: "fbtns" }, fb("horde"), fb("alliance")),
-    h("div", { class: "label" }, "Classes you'd play, in order of preference"),
-    picksBox,
-    h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, "Your 1st choice counts toward the group's comp. Backups show who could switch roles if the group is short."));
+    picker,
+    h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, "Your top choice counts toward the group's comp. Everything else shows who could switch roles, and players with no preference are slotted wherever the group is short."));
   if (readOnly) wrap.querySelectorAll("input,select,button").forEach(x => x.disabled = true);
   return wrap;
 }
@@ -663,17 +724,34 @@ function analyse(members) {
   const counts = { tank: 0, heal: 0, dps: 0 };
   const flex = { tank: [], heal: [], dps: [] };
   const byRole = { tank: [], heal: [], dps: [] };
+  const dpsMix = { melee: 0, ranged: 0, either: 0 };
   const classCount = {};
-  const unpicked = [];
+  const unpicked = [], floaters = [];
   let horde = 0, alliance = 0, undecided = 0;
+  const assign = (m, r, auto) => { counts[r]++; byRole[r].push(m.name); m.role = r; m.auto = auto; };
   for (const m of members) {
-    if (m.entry.faction === "horde") horde++; else if (m.entry.faction === "alliance") alliance++; else undecided++;
-    const picks = validPicks(m.entry);
-    if (!picks.length) { unpicked.push(m.name); continue; }
-    const mainRole = roleOf(picks[0]);
-    counts[mainRole]++; byRole[mainRole].push(m.name);
-    classCount[picks[0].c] = (classCount[picks[0].c] || 0) + 1;
-    for (const p of picks.slice(1)) { const r = roleOf(p); if (r !== mainRole && !flex[r].includes(m.name)) flex[r].push(m.name); }
+    const e = m.entry;
+    if (e.faction === "horde") horde++; else if (e.faction === "alliance") alliance++; else undecided++;
+    if (!e.wants.length) { unpicked.push(m.name); continue; }
+    m.can = new Set(e.wants.flatMap(rolesOf));
+    const mainRoles = e.main && e.main !== "any" ? rolesOf(e.main) : [];
+    if (mainRoles.length === 1) assign(m, mainRoles[0], false); else floaters.push(m);
+    const cls = tokenClass(e.main) || (new Set(e.wants.map(tokenClass)).size === 1 ? tokenClass(e.wants[0]) : null);
+    if (cls) classCount[cls] = (classCount[cls] || 0) + 1;
+  }
+  // Flexible players (no single-role top choice) go wherever the group is furthest short.
+  for (const m of floaters) {
+    const best = [...m.can].sort((x, y) => (counts[x] - t[x]) - (counts[y] - t[y]))[0];
+    assign(m, best, true);
+  }
+  for (const m of members) {
+    if (!m.can) continue;
+    for (const r of m.can) if (r !== m.role && !flex[r].includes(m.name)) flex[r].push(m.name);
+    if (m.role === "dps") {
+      const src = m.entry.main && m.entry.main !== "any" ? [m.entry.main] : m.entry.wants;
+      const kinds = new Set(src.flatMap(specsOf).filter(x => baseRole(x.r) === "dps").map(x => x.r));
+      dpsMix[kinds.size === 1 ? [...kinds][0] : "either"]++;
+    }
   }
   const picked = counts.tank + counts.heal + counts.dps;
   const issues = [];
@@ -682,7 +760,7 @@ function analyse(members) {
     if (diff < 0) {
       const sev = counts[r] === 0 ? "crit" : "warn";
       let msg = `Not enough ${ROLE_NAME[r].toLowerCase()}: ${counts[r]} of ${t[r]}.`;
-      msg += flex[r].length ? ` ${listNames(flex[r])} listed ${ROLE_ONE[r]} as a backup.` : ` Nobody has listed ${ROLE_ONE[r]} as a backup yet.`;
+      msg += flex[r].length ? ` ${listNames(flex[r])} could also ${r === "tank" ? "tank" : "heal"}.` : ` Nobody else has said they'd ${r === "tank" ? "tank" : "heal"}.`;
       issues.push([sev, msg]);
     } else if (diff > 0) {
       const swap = byRole[r].filter(n => flex.dps.includes(n) || (r === "heal" ? flex.tank : flex.heal).includes(n));
@@ -698,6 +776,11 @@ function analyse(members) {
     const missing = CLASSES.filter(c => !classCount[c.id]).map(c => c.name);
     if (missing.length && missing.length < CLASSES.length) issues.push(["info", `No ${listNames(missing)} as a main yet.`]);
   }
+  if (counts.dps) {
+    const parts = [dpsMix.melee && `${dpsMix.melee} melee`, dpsMix.ranged && `${dpsMix.ranged} ranged`, dpsMix.either && `${dpsMix.either} either`].filter(Boolean);
+    issues.push(["info", `DPS mix: ${parts.join(", ")}.`]);
+  }
+  if (floaters.length) issues.push(["info", `${listNames(floaters.map(m => m.name))} ${floaters.length === 1 ? "is" : "are"} flexible, so counted where the group needs them most.`]);
   if (unpicked.length) issues.push(["info", `Still to pick a class: ${listNames(unpicked)}.`]);
   let verdict;
   if (picked === 0) verdict = ["warn", "No picks yet"];
@@ -716,8 +799,8 @@ async function renderAnalysis() {
   const g = groups[activeGid];
   const removed = new Set(g.removed || []);
   // Merge my local state over the snapshot so my own edits show instantly.
-  const rows = activeMembers.filter(m => m.id !== me).map(m => ({ id: m.id, nick: m.data.nick, entry: (m.data.groups || {})[activeGid] || {} }));
-  if (myData.groupIds.includes(activeGid)) rows.push({ id: me, nick: myData.nick, entry: myEntry(activeGid) });
+  const rows = activeMembers.filter(m => m.id !== me).map(m => ({ id: m.id, nick: m.data.nick, entry: normEntry((m.data.groups || {})[activeGid]) }));
+  if (myData.groupIds.includes(activeGid)) rows.push({ id: me, nick: myData.nick, entry: normEntry(myEntry(activeGid)) });
   const ps = user ? await user.profiles(rows.map(r => r.id)) : {};
   if (tok !== renderToken) return;
   const named = rows.map(r => {
@@ -761,7 +844,7 @@ function renderAnalysisPanels(members, ctx = {}) {
   }
   const comp = h("section", { class: "panel" },
     h("div", { class: "ghead" }, h("h3", {}, "Raid Composition"), h("span", { class: "verdict " + a.verdict[0] }, a.verdict[1])),
-    h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, `For ${playersLabel(total)} you want ${a.t.tank} ${a.t.tank === 1 ? "tank" : "tanks"}, ${a.t.heal} ${a.t.heal === 1 ? "healer" : "healers"} and ${a.t.dps} DPS. This updates as people join. Counts use each player's 1st choice.`),
+    h("p", { class: "muted", style: "margin:0;font-size:.9rem" }, `For ${playersLabel(total)} you want ${a.t.tank} ${a.t.tank === 1 ? "tank" : "tanks"}, ${a.t.heal} ${a.t.heal === 1 ? "healer" : "healers"} and ${a.t.dps} DPS. This updates as people join. Counts use each player's top choice.`),
     meters,
     h("ul", { class: "issues" }, a.issues.map(([sev, msg]) => h("li", { class: sev }, msg))));
 
@@ -776,28 +859,29 @@ function renderAnalysisPanels(members, ctx = {}) {
     })));
 
   // Roster
-  const pickCell = p => {
-    if (!p || !roleOf(p)) return h("td", { class: "muted" }, "–");
-    const r = roleOf(p);
-    return h("td", {}, h("span", { class: "chip" },
-      h("span", { class: "dot", style: `background:${CLASS[p.c].color}` }),
-      `${p.s} ${CLASS[p.c].name}`,
-      h("span", { class: "role-" + r, title: ROLE_ONE[r], html: ICON[r] })));
+  const tokenChip = tok => {
+    const cid = tokenClass(tok), rs = rolesOf(tok);
+    return h("span", { class: "chip" },
+      cid ? h("span", { class: "dot", style: `background:${CLASS[cid].color}` }) : null,
+      tokenLabel(tok),
+      rs.length === 1 ? h("span", { class: "role-" + rs[0], title: ROLE_ONE[rs[0]], html: ICON[rs[0]] }) : null);
   };
-  const cols = ["Player", "Faction", "1st choice", "2nd", "3rd"];
+  const cols = ["Player", "Faction", "Top choice", "Counted as", "Also happy to play"];
   if (ctx.isLeader) cols.push("");
   const roster = h("section", { class: "panel" },
     h("div", { class: "ghead" }, h("h3", {}, "Muster Roll"), h("span", { class: "label" }, `${total} ${total === 1 ? "member" : "members"}`)),
     total ? h("div", { class: "tablewrap" }, h("table", {},
       h("thead", {}, h("tr", {}, cols.map(t => h("th", {}, t)))),
       h("tbody", {}, members.map(m => {
-        const picks = validPicks(m.entry);
-        const f = m.entry.faction;
+        const e = m.entry, f = e.faction;
+        const others = e.wants.filter(t => t !== e.main);
         const row = h("tr", {},
           h("td", {}, h("span", { class: "who" }, m.avatar ? h("img", { src: m.avatar, alt: "" }) : null, m.name,
             m.id === ctx.ownerId ? h("span", { class: "lead" }, "Leader") : null)),
           h("td", {}, h("span", { class: "fchip " + (f || "none") }, f === "horde" ? "Horde" : f === "alliance" ? "Alliance" : "Undecided")),
-          pickCell(picks[0]), pickCell(picks[1]), pickCell(picks[2]));
+          h("td", {}, !e.wants.length ? h("span", { class: "muted" }, "Not picked yet") : e.main === "any" ? h("span", { class: "muted" }, "No preference") : tokenChip(e.main)),
+          h("td", {}, m.role ? h("span", { class: "chip role-" + m.role, html: ICON[m.role] }, ROLE_ONE[m.role], m.auto ? h("span", { class: "muted" }, " (flex)") : null) : h("span", { class: "muted" }, "–")),
+          h("td", {}, others.length ? h("div", { class: "chips" }, others.map(tokenChip)) : h("span", { class: "muted" }, "–")));
         if (ctx.isLeader) row.append(h("td", {}, m.id === me ? null : confirmButton("Remove", "Confirm remove", "kick", () => removeMember(m.id))));
         return row;
       }))))
